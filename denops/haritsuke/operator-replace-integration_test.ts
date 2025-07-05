@@ -135,7 +135,111 @@ describe("executeReplaceOperator - integration", () => {
     })
   })
 
+  describe("3-line file edge case", () => {
+    it("should correctly replace last line in 3-line file", async () => {
+      // Test case for the reported issue:
+      // File: "foo\n\nbar"
+      // 1. Yank "foo" (character-wise)
+      // 2. Visual line select "bar" (line 3)
+      // 3. Replace - should result in "foo\n\nfoo", not "foo\n foo"
+
+      const commands: string[] = []
+      const mockVimApi = createMockVimApi({
+        getpos: (expr: string) => {
+          // Visual marks for line 3 selection
+          if (expr === "'<") return Promise.resolve([0, 3, 1, 0])
+          if (expr === "'>") return Promise.resolve([0, 3, 3, 0]) // "bar" is 3 chars
+          return Promise.resolve([0, 0, 0, 0])
+        },
+        cmd: (cmd: string) => {
+          commands.push(cmd)
+          return Promise.resolve()
+        },
+        eval: (expr: string) => {
+          if (expr === "&undolevels") return Promise.resolve(1000)
+          if (expr === "strlen(getline(3))") return Promise.resolve(3) // "bar" length
+          if (expr === "getregtype('\"')") return Promise.resolve("v") // character-wise register
+          return Promise.resolve(0)
+        },
+        line: (arg: string) => {
+          if (arg === "$") return Promise.resolve(3) // 3 lines total
+          return Promise.resolve(1)
+        },
+      })
+
+      // Act
+      await executeReplaceOperator({
+        motionWise: "line",
+        register: '"',
+        visualMode: true,
+      }, mockVimApi)
+
+      // Assert
+      assertEquals(
+        commands[0],
+        'silent! normal! 3GV3G"_d',
+        "Should delete line 3 without column positions",
+      )
+      // Check that special handling was applied
+      assertEquals(commands.length, 4, "Should have 4 commands: delete, undolevel, new line, paste")
+      assertEquals(
+        commands[0],
+        'silent! normal! 3GV3G"_d',
+        "Should delete line 3",
+      )
+      // With the fix, it should add a new line and paste
+      assertEquals(commands[2], "silent! normal! o", "Should create new line")
+      assertEquals(commands[3], 'silent! normal! ""P', "Should paste character-wise content from default register")
+    })
+  })
+
   describe("line-wise replace behavior", () => {
+    it("should handle word yank followed by line-wise replace correctly", async () => {
+      // Test case for the reported issue:
+      // 1. Yank a word (regtype="v") like "hoge"
+      // 2. Use V (line-wise) selection for replace
+      // 3. Should not jump to column 237 or other unexpected positions
+
+      // Arrange
+      const commands: string[] = []
+      const mockVimApi = createMockVimApi({
+        getpos: (expr: string) => {
+          // Visual marks for line selection
+          if (expr === "'<") return Promise.resolve([0, 2, 1, 0]) // Line 2 start
+          if (expr === "'>") return Promise.resolve([0, 2, 237, 0]) // Line 2 with large column (simulating the issue)
+          return Promise.resolve([0, 0, 0, 0])
+        },
+        cmd: (cmd: string) => {
+          commands.push(cmd)
+          return Promise.resolve()
+        },
+        eval: () => Promise.resolve(1000),
+        line: (arg: string) => {
+          if (arg === "$") return Promise.resolve(5) // 5 lines in buffer
+          return Promise.resolve(1)
+        },
+      })
+
+      // Act
+      await executeReplaceOperator({
+        motionWise: "line",
+        register: '"',
+        visualMode: true,
+      }, mockVimApi)
+
+      // Assert
+      assertEquals(
+        commands[0],
+        'silent! normal! 2GV2G"_d',
+        "Should delete entire line without using column positions (no 237|)",
+      )
+      assertEquals(
+        commands[2],
+        'silent! normal! ""P',
+        "Should use P for line-wise paste",
+      )
+    })
+
     it("should work with VR but currently doesn't", async () => {
       // Test documents that VR doesn't work as expected
 
@@ -164,8 +268,8 @@ describe("executeReplaceOperator - integration", () => {
       // Assert
       assertEquals(
         commands[0],
-        'silent! normal! 2G1|V2G8|"_d',
-        "Should delete entire line",
+        'silent! normal! 2GV2G"_d',
+        "Should delete entire line without column positions for line-wise operations",
       )
       assertEquals(
         commands[2],

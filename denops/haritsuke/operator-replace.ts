@@ -109,9 +109,14 @@ export const executeReplaceOperator = async (
 
   // Build visual selection and delete command
   const visualCmd = getVisualCommand(options.motionWise)
-  const deleteCmd = `silent! normal! ${startPos[1]}G${startPos[2]}|${visualCmd}${endPos[1]}G${
-    endPos[2]
-  }|"${SPECIAL_REGISTERS.BLACK_HOLE}d`
+
+  // For line-wise operations, column position is irrelevant
+  // Using column position can cause cursor to jump to unexpected positions
+  const deleteCmd = options.motionWise === "line"
+    ? `silent! normal! ${startPos[1]}G${visualCmd}${endPos[1]}G"${SPECIAL_REGISTERS.BLACK_HOLE}d`
+    : `silent! normal! ${startPos[1]}G${startPos[2]}|${visualCmd}${endPos[1]}G${
+      endPos[2]
+    }|"${SPECIAL_REGISTERS.BLACK_HOLE}d`
 
   // Split undo: delete operation
   await vimApi.cmd(deleteCmd)
@@ -130,7 +135,26 @@ export const executeReplaceOperator = async (
     bufferEndLine,
   )
 
-  await vimApi.cmd(`silent! normal! "${options.register}${pasteCmd}`)
+  // Check register type to handle mixed-mode operations correctly
+  const regtype = String(await vimApi.eval(`getregtype('${options.register}')`))
+  const isLineWiseRegister = regtype.startsWith("V") || regtype === "\x16" // V or ^V
+
+  // When deleting lines but pasting character-wise content,
+  // we need special handling to ensure correct placement
+  if (options.motionWise === "line" && !isLineWiseRegister) {
+    // For character-wise paste after line deletion:
+    // - If we deleted the last line(s), cursor is at end of previous line
+    // - We need to create a new line and paste there
+    if (pasteCmd === "p" && endPos[1] === bufferEndLine) {
+      // Add a new line before pasting
+      await vimApi.cmd("silent! normal! o")
+      await vimApi.cmd(`silent! normal! "${options.register}P`)
+    } else {
+      await vimApi.cmd(`silent! normal! "${options.register}${pasteCmd}`)
+    }
+  } else {
+    await vimApi.cmd(`silent! normal! "${options.register}${pasteCmd}`)
+  }
 
   // Return the actual paste command used
   return pasteCmd

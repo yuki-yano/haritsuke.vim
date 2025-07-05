@@ -131,7 +131,11 @@ export const createMockVimApi = (overrides: Partial<VimApi> = {}): VimApi => {
     getline: () => Promise.resolve(""),
     undotree: () => Promise.resolve({ seq_cur: 0 }),
     cmd: () => Promise.resolve(),
-    eval: () => Promise.resolve(undefined),
+    eval: (expr: string) => {
+      // Default eval handling for common expressions
+      if (typeof expr === "string" && expr.startsWith("getregtype(")) return Promise.resolve("v")
+      return Promise.resolve(undefined)
+    },
     setGlobalVar: () => Promise.resolve(),
     getGlobalVar: () => Promise.resolve(undefined),
     ...overrides,
