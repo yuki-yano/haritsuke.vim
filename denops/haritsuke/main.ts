@@ -18,5 +18,6 @@ export function main(denops: Denops): void {
     cyclePrev: api.cyclePrev,
     cycleNext: api.cycleNext,
     doReplaceOperator: api.doReplaceOperator,
+    isActive: api.isActive,
   }
 }

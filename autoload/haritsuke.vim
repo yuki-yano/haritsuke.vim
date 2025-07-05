@@ -87,3 +87,19 @@ function! haritsuke#replace_operator(type) abort
     \ 'visualMode': l:visual_mode
     \ }])
 endfunction
+
+function! haritsuke#is_active() abort
+  if !denops#plugin#is_loaded('haritsuke')
+    return 0
+  endif
+  
+  call denops#plugin#wait('haritsuke')
+  call s:ensure_initialized()
+  
+  try
+    return denops#request('haritsuke', 'isActive', [])
+  catch
+    " Return false if error occurs
+    return 0
+  endtry
+endfunction

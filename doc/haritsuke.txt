@@ -113,6 +113,19 @@ MAPPINGS                                        *haritsuke-mappings*
     Replace operator. Use with motions to replace text with
     register content. For example, `griw` replaces inner word.
 
+                                                *haritsuke#is_active()*
+haritsuke#is_active()
+    Returns 1 if paste cycling is currently active, 0 otherwise.
+    This function can be used to check the current state of the
+    plugin for custom keymaps or integrations.
+
+    Example:
+>
+    if haritsuke#is_active()
+      echo "Currently cycling through yank history"
+    endif
+<
+
 ==============================================================================
 CONFIGURATION                                   *haritsuke-configuration*
 

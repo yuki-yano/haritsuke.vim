@@ -109,6 +109,9 @@ p       " Paste after cursor
 " 4. Use replace operator
 griw    " Replace inner word with register content
 grG     " Replace from cursor to end of file
+
+" 5. Check if cycling is active
+:echo haritsuke#is_active()  " Returns 1 during cycling, 0 otherwise
 ```
 
 ## Configuration
@@ -184,6 +187,18 @@ p       " Replace selection with yanked text
 <C-n>   " Cycle to next item in history
 gr      " Replace with register content
 ```
+
+### Programmatic usage
+
+You can check if paste cycling is currently active:
+
+```vim
+if haritsuke#is_active()
+  echo "Currently cycling through yank history"
+endif
+```
+
+This is useful for creating custom keymaps or integrations that behave differently during paste cycling.
 
 ## Troubleshooting
 

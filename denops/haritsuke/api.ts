@@ -278,6 +278,20 @@ export const createApi = (denops: Denops, state: PluginState) => {
     }
   }
 
+  const isActive = async (_args: unknown): Promise<boolean> => {
+    if (!state.rounderManager) {
+      return false
+    }
+
+    try {
+      const bufnr = await fn.bufnr(denops, "%")
+      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+      return rounder.isActive()
+    } catch {
+      return false
+    }
+  }
+
   return {
     initialize,
     onTextYankPost,
@@ -288,6 +302,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
     cyclePrev,
     cycleNext,
     doReplaceOperator,
+    isActive,
   }
 }
 
