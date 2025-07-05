@@ -46,7 +46,6 @@ export type YankDatabase = {
   init: () => Promise<void>
   add: (entry: Omit<YankEntry, "id" | "size">) => Promise<YankEntry>
   getRecent: (limit?: number) => YankEntry[]
-  getStats: () => { totalCount: number; maxHistory: number }
   getSyncStatus: () => SyncStatus
   close: () => void
 }
@@ -69,7 +68,6 @@ export const createYankDatabase = (
     insert?: StatementSync
     selectRecent?: StatementSync
     deleteOld?: StatementSync
-    getCount?: StatementSync
   } = {}
 
   /**
@@ -153,11 +151,6 @@ export const createYankDatabase = (
         ORDER BY timestamp DESC
         LIMIT ?
       )
-    `)
-
-    // Get total count
-    statements.getCount = db!.prepare(`
-      SELECT COUNT(*) as count FROM yank_history
     `)
   }
 
@@ -322,27 +315,20 @@ export const createYankDatabase = (
   }
 
   /**
-   * Get statistics
-   */
-  const getStats = (): { totalCount: number; maxHistory: number } => {
-    try {
-      const result = statements.getCount!.get() as CountResult
-      return {
-        totalCount: result.count,
-        maxHistory: maxHistory,
-      }
-    } catch (_error) {
-      return { totalCount: 0, maxHistory: maxHistory }
-    }
-  }
-
-  /**
    * Get sync status
    * Used for change detection with fast metadata queries
    */
   const getSyncStatus = (): SyncStatus => {
+    // Check if database is closed
+    if (!db) {
+      return {
+        lastTimestamp: 0,
+        entryCount: 0,
+      }
+    }
+
     try {
-      const result = db!.prepare(`
+      const result = db.prepare(`
         SELECT 
           MAX(timestamp) as last_timestamp,
           COUNT(*) as entry_count
@@ -367,7 +353,14 @@ export const createYankDatabase = (
    */
   const close = (): void => {
     try {
+      // Clear prepared statements first
+      statements.insert = undefined
+      statements.selectRecent = undefined
+      statements.deleteOld = undefined
+
+      // Then close database
       db?.close()
+      db = undefined
     } catch (error) {
       logger?.error("database", "Failed to close database", error)
     }
@@ -378,7 +371,6 @@ export const createYankDatabase = (
     init,
     add,
     getRecent,
-    getStats,
     getSyncStatus,
     close,
   }

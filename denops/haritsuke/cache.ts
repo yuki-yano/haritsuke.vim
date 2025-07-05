@@ -24,12 +24,6 @@ export type YankCache = {
   search: (query: string, limit?: number) => YankEntry[]
   filterByFiletype: (filetype: string) => YankEntry[]
   moveToFront: (entryId: string) => boolean
-  getStats: () => {
-    totalSize: number
-    totalBytes: number
-    byFiletype: Record<string, number>
-    byRegtype: Record<string, number>
-  }
 }
 
 /**
@@ -127,37 +121,6 @@ export const createYankCache = (maxSize: number = 100): YankCache => {
     return true
   }
 
-  /**
-   * Statistics information
-   */
-  const getStats = (): {
-    totalSize: number
-    totalBytes: number
-    byFiletype: Record<string, number>
-    byRegtype: Record<string, number>
-  } => {
-    let totalBytes = 0
-    const byFiletype: Record<string, number> = {}
-    const byRegtype: Record<string, number> = { v: 0, V: 0, b: 0 }
-
-    for (const entry of entries) {
-      totalBytes += entry.size || 0
-
-      if (entry.sourceFiletype) {
-        byFiletype[entry.sourceFiletype] = (byFiletype[entry.sourceFiletype] || 0) + 1
-      }
-
-      byRegtype[entry.regtype]++
-    }
-
-    return {
-      totalSize: entries.length,
-      totalBytes,
-      byFiletype,
-      byRegtype,
-    }
-  }
-
   // Return public API
   return {
     add,
@@ -172,6 +135,5 @@ export const createYankCache = (maxSize: number = 100): YankCache => {
     search,
     filterByFiletype,
     moveToFront,
-    getStats,
   }
 }

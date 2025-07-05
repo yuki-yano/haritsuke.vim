@@ -220,31 +220,4 @@ describe("YankCache", () => {
       assertEquals(cache.get(0)?.id, "1") // Cache should remain unchanged
     })
   })
-
-  describe("getStats", () => {
-    it("should return correct statistics", () => {
-      const cache = createYankCache()
-      cache.add({ id: "1", content: "test", regtype: "v", timestamp: 1, size: 4, sourceFiletype: "vim" })
-      cache.add({ id: "2", content: "longer test", regtype: "V", timestamp: 2, size: 11, sourceFiletype: "typescript" })
-      cache.add({ id: "3", content: "block", regtype: "b", timestamp: 3, size: 5, sourceFiletype: "vim" })
-
-      const stats = cache.getStats()
-      assertEquals(stats.totalSize, 3)
-      assertEquals(stats.totalBytes, 20) // 4 + 11 + 5
-      assertEquals(stats.byFiletype, { vim: 2, typescript: 1 })
-      assertEquals(stats.byRegtype, { v: 1, V: 1, b: 1 })
-    })
-
-    it("should handle entries without size or filetype", () => {
-      const cache = createYankCache()
-      cache.add({ id: "1", content: "test", regtype: "v", timestamp: 1 })
-      cache.add({ id: "2", content: "test2", regtype: "V", timestamp: 2, size: 5 })
-
-      const stats = cache.getStats()
-      assertEquals(stats.totalSize, 2)
-      assertEquals(stats.totalBytes, 5) // 0 + 5
-      assertEquals(stats.byFiletype, {})
-      assertEquals(stats.byRegtype, { v: 1, V: 1, b: 0 })
-    })
-  })
 })
