@@ -185,15 +185,6 @@ p       " Replace selection with yanked text
 gr      " Replace with register content
 ```
 
-### Integration with system clipboard
-
-Works seamlessly with system clipboard:
-
-```vim
-"+yy    " Yank to system clipboard
-"+p     " Paste from clipboard with history support
-```
-
 ## Troubleshooting
 
 ### Enable debug mode
