@@ -103,3 +103,19 @@ function! haritsuke#is_active() abort
     return 0
   endtry
 endfunction
+
+function! haritsuke#list() abort
+  if !denops#plugin#is_loaded('haritsuke')
+    return []
+  endif
+  
+  call denops#plugin#wait('haritsuke')
+  call s:ensure_initialized()
+  
+  try
+    return denops#request('haritsuke', 'listHistory', [])
+  catch
+    " Return empty list if error occurs
+    return []
+  endtry
+endfunction

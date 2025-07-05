@@ -292,6 +292,18 @@ export const createApi = (denops: Denops, state: PluginState) => {
     }
   }
 
+  const listHistory = (_args: unknown): Array<{ type: "v" | "V" | "b"; content: string }> => {
+    if (!state.cache) {
+      return []
+    }
+
+    const entries = state.cache.getAll()
+    return entries.map((entry) => ({
+      type: entry.regtype,
+      content: entry.content,
+    }))
+  }
+
   return {
     initialize,
     onTextYankPost,
@@ -303,6 +315,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
     cycleNext,
     doReplaceOperator,
     isActive,
+    listHistory,
   }
 }
 

@@ -19,5 +19,6 @@ export function main(denops: Denops): void {
     cycleNext: api.cycleNext,
     doReplaceOperator: api.doReplaceOperator,
     isActive: api.isActive,
+    listHistory: api.listHistory,
   }
 }
