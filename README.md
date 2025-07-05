@@ -1,0 +1,241 @@
+# haritsuke.vim
+
+Advanced yank history manager with cycling support for Vim/Neovim powered by denops.vim.
+
+## Features
+
+- **Persistent yank history**: Saves yank history to disk and restores it across Vim sessions
+- **Paste cycling**: After pasting, use `Ctrl-n`/`Ctrl-p` to cycle through yank history
+- **Replace operator**: Replace text with yanked content using operators
+- **Multi-register support**: Track history for multiple registers
+- **Smart highlighting**: Visual feedback during paste cycling
+- **Database-backed storage**: Efficient storage with SQLite
+
+## Requirements
+
+- Vim 9.0+ or Neovim 0.8.0+
+- [denops.vim](https://github.com/vim-denops/denops.vim)
+- Deno 1.37.0+
+
+## Installation
+
+Using [vim-plug](https://github.com/junegunn/vim-plug):
+
+```vim
+Plug 'vim-denops/denops.vim'
+Plug 'yuki-yano/haritsuke.vim'
+```
+
+Using [lazy.nvim](https://github.com/folke/lazy.nvim):
+
+```lua
+{
+  'yuki-yano/haritsuke.vim',
+  dependencies = { 'vim-denops/denops.vim' }
+}
+```
+
+## Usage
+
+### Basic mappings
+
+Using Vim script:
+
+```vim
+" Enhanced paste commands with history cycling
+nmap p <Plug>(haritsuke-p)
+nmap P <Plug>(haritsuke-P)
+nmap gp <Plug>(haritsuke-gp)
+nmap gP <Plug>(haritsuke-gP)
+xmap p <Plug>(haritsuke-p)
+xmap P <Plug>(haritsuke-P)
+xmap gp <Plug>(haritsuke-gp)
+xmap gP <Plug>(haritsuke-gP)
+
+" Cycle through yank history after pasting
+nmap <C-n> <Plug>(haritsuke-next)
+nmap <C-p> <Plug>(haritsuke-prev)
+
+" Replace operator
+nmap gr <Plug>(haritsuke-replace)
+xmap gr <Plug>(haritsuke-replace)
+```
+
+Using Neovim Lua:
+
+```lua
+-- Enhanced paste commands with history cycling
+vim.keymap.set('n', 'p', '<Plug>(haritsuke-p)')
+vim.keymap.set('n', 'P', '<Plug>(haritsuke-P)')
+vim.keymap.set('n', 'gp', '<Plug>(haritsuke-gp)')
+vim.keymap.set('n', 'gP', '<Plug>(haritsuke-gP)')
+vim.keymap.set('x', 'p', '<Plug>(haritsuke-p)')
+vim.keymap.set('x', 'P', '<Plug>(haritsuke-P)')
+vim.keymap.set('x', 'gp', '<Plug>(haritsuke-gp)')
+vim.keymap.set('x', 'gP', '<Plug>(haritsuke-gP)')
+
+-- Cycle through yank history after pasting
+vim.keymap.set('n', '<C-n>', '<Plug>(haritsuke-next)')
+vim.keymap.set('n', '<C-p>', '<Plug>(haritsuke-prev)')
+
+-- Replace operator
+vim.keymap.set('n', 'gr', '<Plug>(haritsuke-replace)')
+vim.keymap.set('x', 'gr', '<Plug>(haritsuke-replace)')
+```
+
+### How it works
+
+1. **Yank history tracking**: All yank operations are automatically recorded
+2. **Enhanced paste**: Use your regular paste commands with added history support
+3. **History cycling**: After pasting, press `<C-n>`/`<C-p>` to cycle through previous yanks
+4. **Replace operator**: Use `gr{motion}` to replace text with register content (e.g., `griw` to replace inner word)
+
+### Example workflow
+
+```vim
+" 1. Yank some text
+yiw     " Yank inner word
+yy      " Yank line
+yi"     " Yank inside quotes
+
+" 2. Paste as usual
+p       " Paste after cursor
+
+" 3. Cycle through history
+<C-p>   " Replace with previous yank
+<C-p>   " Go further back in history
+<C-n>   " Go forward in history
+
+" 4. Use replace operator
+griw    " Replace inner word with register content
+grG     " Replace from cursor to end of file
+```
+
+## Configuration
+
+Configure haritsuke.vim by setting `g:haritsuke_config`:
+
+Using Vim script:
+
+```vim
+let g:haritsuke_config = {
+  \ 'persist_path': '',         " Database directory (default: stdpath('data')/haritsuke)
+  \ 'max_entries': 100,         " Maximum number of history entries
+  \ 'max_data_size': 1048576,   " Maximum size per entry in bytes (1MB)
+  \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+  \ 'debug': v:false,           " Enable debug logging
+  \ 'use_region_hl': v:false,   " Enable highlight during paste cycling
+  \ 'region_hl_groupname': 'HaritsukeRegion'  " Highlight group name
+  \ }
+```
+
+Using Neovim Lua:
+
+```lua
+vim.g.haritsuke_config = {
+  persist_path = '',         -- Database directory (default: stdpath('data')/haritsuke)
+  max_entries = 100,         -- Maximum number of history entries
+  max_data_size = 1048576,   -- Maximum size per entry in bytes (1MB)
+  register_keys = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+  debug = false,             -- Enable debug logging
+  use_region_hl = false,     -- Enable highlight during paste cycling
+  region_hl_groupname = 'HaritsukeRegion'  -- Highlight group name
+}
+```
+
+### Configuration options
+
+- **persist_path**: Directory path where the SQLite database file will be stored. If empty, uses the default location (`~/.local/share/nvim/haritsuke/` for Neovim or `~/.vim/haritsuke/` for Vim)
+- **max_entries**: Maximum number of yank entries to keep in history (default: 100)
+- **max_data_size**: Maximum size in bytes for a single yank entry (default: 1048576 = 1MB)
+- **register_keys**: Registers to track for history (default: all alphanumeric and special registers)
+- **debug**: Enable debug logging for troubleshooting (default: false)
+- **use_region_hl**: Show visual highlight of pasted region during cycling (default: false)
+- **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
+
+### Highlight customization
+
+Customize the paste region highlight:
+
+```vim
+highlight HaritsukeRegion guibg=#3e4452 ctermbg=238
+```
+
+## Advanced features
+
+### Multi-register support
+
+haritsuke.vim tracks history for multiple registers independently:
+
+```vim
+"ayiw   " Yank to register 'a'
+"byy    " Yank to register 'b'
+"ap     " Paste from register 'a' with history
+"bp     " Paste from register 'b' with history
+```
+
+### Visual mode support
+
+All features work in visual mode:
+
+```vim
+" Select text, then:
+p       " Replace selection with yanked text
+<C-n>   " Cycle to next item in history
+gr      " Replace with register content
+```
+
+### Integration with system clipboard
+
+Works seamlessly with system clipboard:
+
+```vim
+"+yy    " Yank to system clipboard
+"+p     " Paste from clipboard with history support
+```
+
+## Troubleshooting
+
+### Enable debug mode
+
+```vim
+let g:haritsuke_config = { 'debug': v:true }
+```
+
+Check the debug output in `:messages`.
+
+### Database location
+
+By default, the yank history database is stored at:
+- **Neovim**: `~/.local/share/nvim/haritsuke/history.db`
+- **Vim**: `~/.vim/haritsuke/history.db`
+
+You can customize the location by setting `persist_path` in your configuration:
+
+```vim
+let g:haritsuke_config = {
+  \ 'persist_path': expand('~/my-custom-path/haritsuke')
+  \ }
+```
+
+### Reset history
+
+To clear all yank history, delete the database file:
+
+```bash
+# Default locations
+rm -rf ~/.local/share/nvim/haritsuke/  # For Neovim
+rm -rf ~/.vim/haritsuke/               # For Vim
+
+# Or if you set a custom path
+rm -rf ~/my-custom-path/haritsuke/
+```
+
+## License
+
+MIT
+
+## Credits
+
+- Powered by [denops.vim](https://github.com/vim-denops/denops.vim)
+- Name "haritsuke" (貼り付け) means "paste" in Japanese

@@ -1,0 +1,233 @@
+*haritsuke.txt*	Advanced yank history manager with cycling support
+
+==============================================================================
+CONTENTS                                        *haritsuke-contents*
+
+INTRODUCTION            |haritsuke-introduction|
+REQUIREMENTS            |haritsuke-requirements|
+INSTALLATION            |haritsuke-installation|
+USAGE                   |haritsuke-usage|
+MAPPINGS                |haritsuke-mappings|
+CONFIGURATION           |haritsuke-configuration|
+HIGHLIGHTS              |haritsuke-highlights|
+EXAMPLES                |haritsuke-examples|
+ABOUT                   |haritsuke-about|
+
+==============================================================================
+INTRODUCTION                                    *haritsuke-introduction*
+
+haritsuke.vim is an advanced yank history manager for Vim/Neovim powered by
+denops.vim. It provides persistent yank history storage and convenient cycling
+through previous yanks after pasting.
+
+Features:
+  - Persistent yank history across Vim sessions
+  - Paste cycling with Ctrl-n/Ctrl-p after pasting
+  - Replace operator for motion-based replacement
+  - Multi-register support
+  - Smart highlighting during paste cycling
+  - Database-backed storage with SQLite
+
+==============================================================================
+REQUIREMENTS                                    *haritsuke-requirements*
+
+- Vim 9.0+ or Neovim 0.8.0+
+- denops.vim (https://github.com/vim-denops/denops.vim)
+- Deno 1.37.0+
+
+==============================================================================
+INSTALLATION                                    *haritsuke-installation*
+
+Using vim-plug:
+>
+    Plug 'vim-denops/denops.vim'
+    Plug 'yuki-yano/haritsuke.vim'
+<
+
+Using lazy.nvim:
+>
+    {
+      'yuki-yano/haritsuke.vim',
+      dependencies = { 'vim-denops/denops.vim' }
+    }
+<
+
+==============================================================================
+USAGE                                           *haritsuke-usage*
+
+After installation, set up key mappings to use haritsuke.vim features:
+
+>
+    " Enhanced paste commands
+    nmap p <Plug>(haritsuke-p)
+    nmap P <Plug>(haritsuke-P)
+    nmap gp <Plug>(haritsuke-gp)
+    nmap gP <Plug>(haritsuke-gP)
+    xmap p <Plug>(haritsuke-p)
+    xmap P <Plug>(haritsuke-P)
+    xmap gp <Plug>(haritsuke-gp)
+    xmap gP <Plug>(haritsuke-gP)
+
+    " Cycle through yank history
+    nmap <C-n> <Plug>(haritsuke-next)
+    nmap <C-p> <Plug>(haritsuke-prev)
+
+    " Replace operator
+    nmap gr <Plug>(haritsuke-replace)
+    xmap gr <Plug>(haritsuke-replace)
+<
+
+==============================================================================
+MAPPINGS                                        *haritsuke-mappings*
+
+                                                *<Plug>(haritsuke-p)*
+<Plug>(haritsuke-p)
+    Paste after cursor with history support. Works like |p|.
+
+                                                *<Plug>(haritsuke-P)*
+<Plug>(haritsuke-P)
+    Paste before cursor with history support. Works like |P|.
+
+                                                *<Plug>(haritsuke-gp)*
+<Plug>(haritsuke-gp)
+    Paste after cursor and leave cursor after pasted text.
+    Works like |gp|.
+
+                                                *<Plug>(haritsuke-gP)*
+<Plug>(haritsuke-gP)
+    Paste before cursor and leave cursor after pasted text.
+    Works like |gP|.
+
+                                                *<Plug>(haritsuke-next)*
+<Plug>(haritsuke-next)
+    After pasting, cycle to the next item in yank history.
+    Only available immediately after paste operations.
+
+                                                *<Plug>(haritsuke-prev)*
+<Plug>(haritsuke-prev)
+    After pasting, cycle to the previous item in yank history.
+    Only available immediately after paste operations.
+
+                                                *<Plug>(haritsuke-replace)*
+<Plug>(haritsuke-replace)
+    Replace operator. Use with motions to replace text with
+    register content. For example, `griw` replaces inner word.
+
+==============================================================================
+CONFIGURATION                                   *haritsuke-configuration*
+
+                                                *g:haritsuke_config*
+Configure haritsuke.vim by setting `g:haritsuke_config` dictionary:
+
+>
+    let g:haritsuke_config = {
+      \ 'persist_path': '',
+      \ 'max_entries': 100,
+      \ 'max_data_size': 1048576,
+      \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+      \ 'debug': v:false,
+      \ 'use_region_hl': v:false,
+      \ 'region_hl_groupname': 'HaritsukeRegion'
+      \ }
+<
+
+Options:
+
+persist_path                            *g:haritsuke_config.persist_path*
+    Directory path where the SQLite database file (history.db) will be stored.
+    Default: "" (uses stdpath('data')/haritsuke)
+
+max_entries                             *g:haritsuke_config.max_entries*
+    Maximum number of yank entries to keep in history.
+    Default: 100
+
+max_data_size                           *g:haritsuke_config.max_data_size*
+    Maximum size in bytes for a single yank entry.
+    Default: 1048576 (1MB)
+
+register_keys                           *g:haritsuke_config.register_keys*
+    Registers to track for history.
+    Default: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_'
+
+debug                                   *g:haritsuke_config.debug*
+    Enable debug logging for troubleshooting.
+    Default: v:false
+
+use_region_hl                           *g:haritsuke_config.use_region_hl*
+    Show visual highlight of pasted region during cycling.
+    Default: v:false
+
+region_hl_groupname                     *g:haritsuke_config.region_hl_groupname*
+    Vim highlight group for paste region highlighting.
+    Default: 'HaritsukeRegion'
+
+==============================================================================
+HIGHLIGHTS                                      *haritsuke-highlights*
+
+                                                *hl-HaritsukeRegion*
+HaritsukeRegion
+    Highlight group for pasted region during history cycling.
+    By default linked to |hl-IncSearch|.
+
+    Example customization:
+>
+    highlight HaritsukeRegion guibg=#3e4452 ctermbg=238
+<
+
+==============================================================================
+EXAMPLES                                        *haritsuke-examples*
+
+Basic workflow:
+>
+    " 1. Yank some text
+    yiw     " Yank inner word
+    yy      " Yank line
+    yi"     " Yank inside quotes
+
+    " 2. Paste as usual
+    p       " Paste after cursor
+
+    " 3. Cycle through history
+    <C-p>   " Replace with previous yank
+    <C-p>   " Go further back in history
+    <C-n>   " Go forward in history
+<
+
+Replace operator:
+>
+    " Replace inner word with register content
+    griw
+
+    " Replace from cursor to end of line
+    gr$
+
+    " Replace entire paragraph
+    grip
+<
+
+Multi-register support:
+>
+    "ayiw   " Yank to register 'a'
+    "byy    " Yank to register 'b'
+    "ap     " Paste from register 'a' with history
+    "bp     " Paste from register 'b' with history
+<
+
+Visual mode:
+>
+    " Select text in visual mode, then:
+    p       " Replace selection with yanked text
+    gr      " Replace with register content
+<
+
+==============================================================================
+ABOUT                                           *haritsuke-about*
+
+haritsuke.vim is developed by yuki-yano.
+Latest version: https://github.com/yuki-yano/haritsuke.vim
+
+The name "haritsuke" (貼り付け) means "paste" in Japanese.
+
+License: MIT
+
+vim:tw=78:ts=8:ft=help:norl:

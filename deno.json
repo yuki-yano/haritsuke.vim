@@ -1,0 +1,27 @@
+{
+  "lock": false,
+  "fmt": {
+    "include": ["denops/"],
+    "lineWidth": 120,
+    "semiColons": false
+  },
+  "lint": {
+    "include": ["denops/"]
+  },
+  "test": {
+    "include": ["denops/**/*_test.ts"],
+    "exclude": ["denops/**/test/**", "denops/**/test_denops/**"]
+  },
+  "tasks": {
+    "lint": "deno lint",
+    "check": "deno check denops",
+    "test": "deno test --allow-env",
+    "test:unit": "deno test --allow-env",
+    "test:watch": "deno test --watch",
+    "test:coverage": "deno test --coverage=coverage",
+    "coverage:report": "deno coverage coverage",
+    "format": "deno fmt",
+    "format:check": "deno fmt --check",
+    "ci": "deno task format:check && deno task check && deno task lint && deno task test:unit"
+  }
+}
