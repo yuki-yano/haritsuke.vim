@@ -126,6 +126,29 @@ haritsuke#is_active()
     endif
 <
 
+                                                *haritsuke#list()*
+haritsuke#list()
+    Returns the current yank history as a list of dictionaries.
+    Each dictionary contains:
+    - `type`: Register type ("v", "V", or "b")
+    - `content`: The yanked text content
+
+    Register types:
+    - "v": Characterwise yank
+    - "V": Linewise yank
+    - "b": Blockwise yank
+
+    Example:
+>
+    let history = haritsuke#list()
+    " Returns: [{'type': 'v', 'content': 'yanked text'}, ...]
+    
+    " Show first 5 entries
+    for entry in history[0:4]
+      echo printf("%s: %s", entry.type, entry.content)
+    endfor
+<
+
 ==============================================================================
 CONFIGURATION                                   *haritsuke-configuration*
 

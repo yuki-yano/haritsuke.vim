@@ -198,6 +198,23 @@ if haritsuke#is_active()
 endif
 ```
 
+You can also get the current yank history as a list:
+
+```vim
+let history = haritsuke#list()
+" Returns: [{'type': 'v', 'content': 'yanked text'}, ...]
+
+" Example: Show first 5 entries
+for entry in history[0:4]
+  echo printf("%s: %s", entry.type, entry.content)
+endfor
+```
+
+The `type` field indicates the register type:
+- `v`: Characterwise yank
+- `V`: Linewise yank  
+- `b`: Blockwise yank
+
 This is useful for creating custom keymaps or integrations that behave differently during paste cycling.
 
 ## Troubleshooting
