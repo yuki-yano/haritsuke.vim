@@ -3,8 +3,8 @@
  * Provides operator to replace text with register content
  */
 
-import type { Denops } from "./deps/denops.ts"
 import type { VimApi } from "./vim-api.ts"
+import { SPECIAL_REGISTERS, VISUAL_MODE } from "./constants.ts"
 
 export type ReplaceOperatorOptions = {
   motionWise: "char" | "line" | "block"
@@ -26,11 +26,11 @@ const isEmptyRegion = (startPos: number[], endPos: number[]): boolean => {
 const getVisualCommand = (motionWise: string): string => {
   switch (motionWise) {
     case "line":
-      return "V"
+      return VISUAL_MODE.LINE
     case "block":
-      return "\x16" // Ctrl-V
+      return VISUAL_MODE.BLOCK
     default:
-      return "v"
+      return VISUAL_MODE.CHAR
   }
 }
 
@@ -74,7 +74,6 @@ const deletionMovesTheCursor = async (
  */
 const getPasteCommand = async (
   motionWise: string,
-  _visualMode: boolean,
   endPos: number[],
   vimApi: VimApi,
   preDeleteBufferEndLine?: number,
@@ -126,7 +125,6 @@ export const executeReplaceOperator = async (
   // Pass the original buffer end line (before delete) for correct paste command decision
   const pasteCmd = await getPasteCommand(
     options.motionWise,
-    options.visualMode ?? false,
     endPos,
     vimApi,
     bufferEndLine,
