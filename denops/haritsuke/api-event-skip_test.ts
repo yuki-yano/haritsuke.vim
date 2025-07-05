@@ -47,9 +47,7 @@ Deno.test("createApi - onCursorMoved: skips processing when _haritsuke_applying_
 
   const state = createMockPluginState({
     logger: mockLogger,
-    database: {
-      getStats: () => ({ entryCount: 0, totalSize: 0, oldestTimestamp: 0, newestTimestamp: 0 }),
-    } as unknown as PluginState["database"],
+    database: {} as unknown as PluginState["database"],
   })
 
   const api = createApi(mockDenops, state)
@@ -78,9 +76,7 @@ Deno.test("createApi - onCursorMoved: processes normally when _haritsuke_applyin
 
   const state = createMockPluginState({
     logger: mockLogger,
-    database: {
-      getStats: () => ({ entryCount: 0, totalSize: 0, oldestTimestamp: 0, newestTimestamp: 0 }),
-    } as unknown as PluginState["database"],
+    database: {} as unknown as PluginState["database"],
     highlightManager: { clear: spy(() => Promise.resolve()) } as unknown as PluginState["highlightManager"],
   })
 

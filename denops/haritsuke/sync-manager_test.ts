@@ -21,7 +21,6 @@ const createMockDatabase = (
     init: () => Promise.resolve(),
     add: () => Promise.reject("Not implemented"),
     getRecent: getRecentSpy,
-    getStats: () => ({ totalCount: entries.length, maxHistory: 100 }),
     getSyncStatus: getSyncStatusSpy,
     close: () => {},
   }
@@ -42,12 +41,6 @@ const createMockCache = (): YankCache => {
     filterByFiletype: () => [],
     setAll: setAllSpy,
     moveToFront: () => false,
-    getStats: () => ({
-      totalSize: 0,
-      totalBytes: 0,
-      byFiletype: {},
-      byRegtype: {},
-    }),
   }
 }
 

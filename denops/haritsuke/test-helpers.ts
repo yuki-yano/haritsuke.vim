@@ -33,7 +33,6 @@ export const createMockPluginState = (overrides?: Partial<PluginState>): PluginS
         })
       ),
       getRecent: spy(() => []),
-      getStats: () => ({ totalCount: 0, maxHistory: 100 }),
       getSyncStatus: () => ({ lastTimestamp: 0, entryCount: 0 }),
       close: spy(),
     } as unknown as PluginState["database"],
