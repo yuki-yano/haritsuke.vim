@@ -9,8 +9,8 @@
     "include": ["denops/"]
   },
   "test": {
-    "include": ["denops/**/*_test.ts"],
-    "exclude": ["denops/**/test/**", "denops/**/test_denops/**"]
+    "include": ["denops/haritsuke/test/**/*_test.ts"],
+    "exclude": ["denops/**/test_denops/**"]
   },
   "tasks": {
     "lint": "deno lint",

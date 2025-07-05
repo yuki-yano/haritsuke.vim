@@ -1,6 +1,6 @@
 import type { Denops } from "./deps/denops.ts"
-import { createPluginState } from "./plugin-state.ts"
-import { createApi } from "./api.ts"
+import { createPluginState } from "./state/plugin-state.ts"
+import { createApi } from "./api/api.ts"
 
 // Plugin state
 const state = createPluginState()

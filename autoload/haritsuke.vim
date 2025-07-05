@@ -21,11 +21,11 @@ function! haritsuke#notify(funcname, ...) abort
   if !denops#plugin#is_loaded('haritsuke')
     return
   endif
-  
+
   " Always ensure initialization (checks config changes)
   call denops#plugin#wait_async('haritsuke', 
     \ { -> s:ensure_initialized() })
-  
+
   " Use notify for asynchronous event handling
   call denops#plugin#wait_async('haritsuke', 
     \ { -> denops#notify('haritsuke', a:funcname, a:000) })
@@ -76,7 +76,7 @@ function! haritsuke#replace_operator(type) abort
   " Note: visualmode() returns actual character code for Ctrl-V
   let l:ctrl_v = nr2char(22)  " Ctrl-V is character 22
   let l:motion_wise = a:type ==# 'v' ? 'char' : a:type ==# 'V' ? 'line' : a:type ==# l:ctrl_v ? 'block' : a:type
-  
+
   " Check if called from visual mode
   let l:visual_mode = (a:type ==# 'v' || a:type ==# 'V' || a:type ==# l:ctrl_v)
 
@@ -92,10 +92,10 @@ function! haritsuke#is_active() abort
   if !denops#plugin#is_loaded('haritsuke')
     return 0
   endif
-  
+
   call denops#plugin#wait('haritsuke')
   call s:ensure_initialized()
-  
+
   try
     return denops#request('haritsuke', 'isActive', [])
   catch
@@ -108,10 +108,10 @@ function! haritsuke#list() abort
   if !denops#plugin#is_loaded('haritsuke')
     return []
   endif
-  
+
   call denops#plugin#wait('haritsuke')
   call s:ensure_initialized()
-  
+
   try
     return denops#request('haritsuke', 'listHistory', [])
   catch
