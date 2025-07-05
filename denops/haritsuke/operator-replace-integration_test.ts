@@ -1,5 +1,4 @@
 import { assertEquals, describe, it } from "./deps/test.ts"
-import type { Denops } from "./deps/denops.ts"
 import { createMockVimApi } from "./vim-api.ts"
 import { executeReplaceOperator } from "./operator-replace.ts"
 
@@ -30,10 +29,8 @@ describe("executeReplaceOperator - integration", () => {
         eval: () => Promise.resolve(1000),
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -79,10 +76,8 @@ describe("executeReplaceOperator - integration", () => {
         eval: () => Promise.resolve(1000),
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -120,10 +115,8 @@ describe("executeReplaceOperator - integration", () => {
         eval: () => Promise.resolve(1000),
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -162,10 +155,8 @@ describe("executeReplaceOperator - integration", () => {
         eval: () => Promise.resolve(1000),
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "line",
         register: '"',
       }, mockVimApi)

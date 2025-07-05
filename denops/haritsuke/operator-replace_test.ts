@@ -1,5 +1,4 @@
 import { assertEquals, describe, it } from "./deps/test.ts"
-import type { Denops } from "./deps/denops.ts"
 import { createMockVimApi } from "./vim-api.ts"
 import { executeReplaceOperator } from "./operator-replace.ts"
 
@@ -29,10 +28,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -72,10 +69,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -114,10 +109,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: "a",
       }, mockVimApi)
@@ -154,10 +147,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "line",
         register: '"',
       }, mockVimApi)
@@ -197,10 +188,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "line",
         register: '"',
       }, mockVimApi)
@@ -243,10 +232,8 @@ describe("executeReplaceOperator", () => {
         setreg: () => Promise.resolve(),
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "block",
         register: '"',
       }, mockVimApi)
@@ -281,10 +268,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: '"',
       }, mockVimApi)
@@ -316,10 +301,8 @@ describe("executeReplaceOperator", () => {
         },
       })
 
-      const mockDenops = {} as Denops
-
       // Act with special registers
-      await executeReplaceOperator(mockDenops, {
+      await executeReplaceOperator({
         motionWise: "char",
         register: "+", // clipboard register
       }, mockVimApi)

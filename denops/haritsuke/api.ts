@@ -235,7 +235,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
       visualMode,
     })
 
-    const actualPasteCmd = await executeReplaceOperator(denops, {
+    const actualPasteCmd = await executeReplaceOperator({
       motionWise: motionWise as "char" | "line" | "block",
       register,
       visualMode,

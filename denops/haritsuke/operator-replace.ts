@@ -90,7 +90,6 @@ const getPasteCommand = async (
  * Execute replace operator
  */
 export const executeReplaceOperator = async (
-  _denops: Denops,
   options: ReplaceOperatorOptions,
   vimApi: VimApi,
 ): Promise<string> => {
@@ -111,7 +110,9 @@ export const executeReplaceOperator = async (
 
   // Build visual selection and delete command
   const visualCmd = getVisualCommand(options.motionWise)
-  const deleteCmd = `silent! normal! ${startPos[1]}G${startPos[2]}|${visualCmd}${endPos[1]}G${endPos[2]}|"_d`
+  const deleteCmd = `silent! normal! ${startPos[1]}G${startPos[2]}|${visualCmd}${endPos[1]}G${
+    endPos[2]
+  }|"${SPECIAL_REGISTERS.BLACK_HOLE}d`
 
   // Split undo: delete operation
   await vimApi.cmd(deleteCmd)
