@@ -115,7 +115,7 @@ export const createCommonVimApiMock = (handlers: VimApiMockHandlers = {}): VimAp
       if (expr in evalHandlers) {
         return Promise.resolve(evalHandlers[expr])
       }
-      
+
       // Common eval patterns
       if (expr === "&undolevels") return Promise.resolve(1000)
       if (expr === "b:changedtick") return Promise.resolve(1)
@@ -135,7 +135,7 @@ export const createCommonVimApiMock = (handlers: VimApiMockHandlers = {}): VimAp
           return Promise.resolve(registerTypes[reg] || "v")
         }
       }
-      
+
       return Promise.resolve(undefined)
     },
     getpos: (expr: string) => {

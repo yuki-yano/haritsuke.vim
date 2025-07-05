@@ -5,6 +5,9 @@ import { executeReplaceOperator } from "../core/operator-replace.ts"
 describe("executeReplaceOperator", () => {
   describe("character-wise replace", () => {
     it("should delete selected text and paste from register", async () => {
+      // Buffer: "apple banana cherry"
+      // Operation: Select "banana" (columns 7-12) and replace with register content
+      // Expected: Delete "banana" and paste register content in its place
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -46,6 +49,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle single character replace", async () => {
+      // Buffer: "test line" (or any text)
+      // Operation: Select single character at column 5 and replace
+      // Expected: Delete one character and paste register content
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -87,6 +93,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should use named register", async () => {
+      // Buffer: Any text with at least 5 characters on line 1
+      // Operation: Select characters 1-5 and replace using register "a"
+      // Expected: Delete selection and paste from register "a" instead of default register
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -125,6 +134,9 @@ describe("executeReplaceOperator", () => {
 
   describe("line-wise replace", () => {
     it("should delete lines and paste with P", async () => {
+      // Buffer: Multi-line text with at least 4 lines
+      // Operation: Delete lines 2-4 (3 lines total) and replace with register content
+      // Expected: Delete entire lines 2-4 and paste register content using P (before cursor)
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -165,6 +177,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle single line replace", async () => {
+      // Buffer: Text with line 3 containing at least 20 characters
+      // Operation: Select entire line 3 (from column 1 to 20) for line-wise operation
+      // Expected: Delete entire line 3 and paste register content using P
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -208,6 +223,9 @@ describe("executeReplaceOperator", () => {
 
   describe("block-wise replace", () => {
     it("should delete block and paste", async () => {
+      // Buffer: Text with at least 3 lines, each with at least 5 characters
+      // Operation: Block selection from line 1 col 1 to line 3 col 5 (3x5 block)
+      // Expected: Delete the rectangular block and paste block-wise register content using P
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -254,6 +272,9 @@ describe("executeReplaceOperator", () => {
   describe("getPasteCommand behavior (via executeReplaceOperator)", () => {
     describe("character-wise deletion at end of line", () => {
       it("should use 'p' when deleting to end of line (like d$)", async () => {
+        // Buffer: Line 1 has exactly 10 characters
+        // Operation: Delete from column 5 to end of line (column 10)
+        // Expected: Use lowercase 'p' because deletion moves cursor to end of line
         // Arrange
         const commands: string[] = []
         const mockVimApi = createMockVimApi({
@@ -290,6 +311,9 @@ describe("executeReplaceOperator", () => {
       })
 
       it("should use 'P' when not deleting to end of line", async () => {
+        // Buffer: Line 1 has 15 characters total
+        // Operation: Delete from column 5 to 8 (middle portion, not to end)
+        // Expected: Use uppercase 'P' because text remains after deletion point
         // Arrange
         const commands: string[] = []
         const mockVimApi = createMockVimApi({
@@ -401,6 +425,9 @@ describe("executeReplaceOperator", () => {
 
     describe("empty line handling", () => {
       it("should handle deletion on empty line", async () => {
+        // Buffer: Line 2 is empty (length 0)
+        // Operation: Try to delete on empty line at position 1
+        // Expected: Use 'P' since there's no content to delete to end of line
         // Arrange
         const commands: string[] = []
         const mockVimApi = createMockVimApi({
@@ -439,6 +466,9 @@ describe("executeReplaceOperator", () => {
 
     describe("block-wise never moves cursor", () => {
       it("should always use 'P' for block-wise operations", async () => {
+        // Buffer: Block selection from line 3 col 5 to line 5 col 10 (at buffer end)
+        // Operation: Block-wise deletion and paste
+        // Expected: Always use 'P' regardless of position (block-wise never moves cursor)
         // Arrange
         const commands: string[] = []
         const mockVimApi = createMockVimApi({
@@ -477,6 +507,9 @@ describe("executeReplaceOperator", () => {
 
   describe("edge cases", () => {
     it("should handle empty region gracefully", async () => {
+      // Buffer: Any content
+      // Operation: Invalid region where start position (col 5) is after end position (col 3)
+      // Expected: Should not execute any commands when region is empty/invalid
       // Arrange
       let commandExecuted = false
       const mockVimApi = createMockVimApi({
@@ -503,7 +536,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle different register types", async () => {
-      // Test with different register types and see how they are pasted
+      // Buffer: Text with at least 5 characters
+      // Operation: Delete columns 1-5 using clipboard register "+"
+      // Expected: Delete with black hole register and paste from clipboard register
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
         getpos: (expr: string) => {
@@ -541,6 +576,9 @@ describe("executeReplaceOperator", () => {
 
   describe("mixed register type operations", () => {
     it("should handle line-wise deletion with character-wise paste correctly", async () => {
+      // Buffer: Multi-line text with line 3 as last line
+      // Operation: Line-wise delete of lines 2-3 with character-wise register content
+      // Expected: Special handling - delete lines, create new line with 'o', then paste
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -580,6 +618,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle line-wise deletion with block-wise paste", async () => {
+      // Buffer: Text with at least 5 lines
+      // Operation: Delete line 2 (line-wise) and paste block-wise content
+      // Expected: Normal line deletion followed by block paste with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -615,6 +656,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle character-wise deletion with line-wise paste", async () => {
+      // Buffer: Line 1 with 20 characters
+      // Operation: Delete chars 5-10 and paste line-wise register content
+      // Expected: Character deletion followed by line-wise paste with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -652,6 +696,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle block-wise deletion with line-wise paste", async () => {
+      // Buffer: Text with at least 3 lines, each with 10+ characters
+      // Operation: Block delete from line 1 col 5 to line 3 col 10, paste line-wise content
+      // Expected: Block deletion followed by line-wise paste with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -684,6 +731,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle block-wise register with different widths", async () => {
+      // Buffer: Line with 20 characters
+      // Operation: Delete chars 1-5 and paste block-wise register with width 10
+      // Expected: Character deletion, paste wider block content with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -719,6 +769,9 @@ describe("executeReplaceOperator", () => {
 
   describe("boundary value tests", () => {
     it("should handle operation at first character of file", async () => {
+      // Buffer: Single line file with 10 characters
+      // Operation: Delete first character (position 1,1)
+      // Expected: Delete at beginning and paste with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -753,6 +806,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle operation on single character file", async () => {
+      // Buffer: File with only one character at position (1,1)
+      // Operation: Delete the only character in the file
+      // Expected: Use 'p' since we're deleting all content
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -787,6 +843,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle operation on last character of last line", async () => {
+      // Buffer: 3 lines, last line (line 3) has 15 characters
+      // Operation: Delete last character (position 3,15)
+      // Expected: Use 'p' when at buffer end
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -821,6 +880,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle line-wise operation on single line file", async () => {
+      // Buffer: Single line file with 20 characters
+      // Operation: Delete entire line (the only line)
+      // Expected: Use 'p' when deleting all content
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -854,6 +916,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle block operation spanning entire file", async () => {
+      // Buffer: 3 lines, block from (1,1) to (3,20)
+      // Operation: Block selection covering entire file
+      // Expected: Block operations always use 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -887,6 +952,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle zero-width selection (cursor position)", async () => {
+      // Buffer: Line 2 with 10 characters
+      // Operation: Same start and end position (2,5) - zero width selection
+      // Expected: Delete at cursor position and paste with 'P'
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -923,6 +991,9 @@ describe("executeReplaceOperator", () => {
 
   describe("multi-byte character handling", () => {
     it("should handle Japanese characters", async () => {
+      // Buffer: Text containing "こんにちは" (5 Japanese chars = 10 display columns)
+      // Operation: Select and delete Japanese text from columns 1-10
+      // Expected: Handle multi-byte characters correctly in deletion and paste
       // Note: Column position for multi-byte chars may vary based on encoding
       // This test assumes Japanese chars count as 2 columns each
       const commands: string[] = []
@@ -958,6 +1029,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle emoji characters", async () => {
+      // Buffer: Text containing emoji "👍" at columns 5-6
+      // Operation: Select and delete emoji character
+      // Expected: Handle emoji width correctly (typically 2 columns)
       // Emojis can have complex column width calculations
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -992,6 +1066,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle mixed ASCII and multi-byte text", async () => {
+      // Buffer: "Hello こんにちは World" - mixed ASCII and Japanese
+      // Operation: Select Japanese portion (columns 7-16)
+      // Expected: Correctly handle transition between ASCII and multi-byte chars
       // Mixed content: "Hello こんにちは World"
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1026,6 +1103,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle line-wise operations with multi-byte content", async () => {
+      // Buffer: Line 2 contains Japanese text spanning 50 columns
+      // Operation: Delete entire line 2 (line-wise)
+      // Expected: Line-wise operations ignore column positions for multi-byte chars
       // Line containing multi-byte characters
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1062,6 +1142,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle block operations with multi-byte characters", async () => {
+      // Buffer: 3+ lines containing multi-byte characters
+      // Operation: Block selection from (1,3) to (3,8) crossing multi-byte chars
+      // Expected: Block selection respects display columns for multi-byte chars
       // Block selection with multi-byte chars
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1140,6 +1223,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle visual line mode", async () => {
+      // Buffer: 10 lines of text
+      // Operation: Visual line mode selection from line 2 to 4 (column 999 indicates line mode)
+      // Expected: Delete lines 2-4 ignoring column positions
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1177,6 +1263,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle visual block mode", async () => {
+      // Buffer: Text with at least 3 lines
+      // Operation: Visual block mode from (1,5) to (3,10)
+      // Expected: Use Ctrl-V for visual block deletion
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1214,6 +1303,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle empty visual selection", async () => {
+      // Buffer: Any content
+      // Operation: Visual selection where end (2,8) is before start (2,10)
+      // Expected: Skip execution and return default paste command
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1244,6 +1336,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle visual mode with different register types", async () => {
+      // Buffer: Line with 20 characters
+      // Operation: Visual char mode delete cols 1-10, paste from system clipboard "*"
+      // Expected: Delete visual selection and paste from system clipboard
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1278,6 +1373,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle visual char to line-wise paste correctly", async () => {
+      // Buffer: Line 2 with 15 characters
+      // Operation: Visual char mode delete cols 5-10, but register has line-wise content
+      // Expected: Character deletion followed by line-wise paste
       // Visual char selection but pasting line-wise content
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1314,6 +1412,9 @@ describe("executeReplaceOperator", () => {
 
   describe("error handling and robustness", () => {
     it("should handle getpos returning invalid values", async () => {
+      // Buffer: Any content
+      // Operation: getpos returns invalid data (line 0, negative columns)
+      // Expected: Handle gracefully without throwing errors
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1343,6 +1444,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle eval returning unexpected types", async () => {
+      // Buffer: Any content
+      // Operation: eval returns wrong types (null, string instead of number, etc.)
+      // Expected: Handle type mismatches gracefully with defaults
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1375,6 +1479,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle cmd throwing errors", async () => {
+      // Buffer: Any content
+      // Operation: cmd throws "Permission denied" when setting undolevels
+      // Expected: Error should propagate to caller
       // Arrange
       let errorThrown = false
       const mockVimApi = createMockVimApi({
@@ -1408,6 +1515,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle special characters in register names", async () => {
+      // Buffer: Line with 10 characters
+      // Operation: Delete cols 1-5 using expression register "="
+      // Expected: Handle special register names correctly in paste command
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1441,6 +1551,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle very large position values", async () => {
+      // Buffer: Very large file (1,000,000 lines)
+      // Operation: Positions at line 999999 with very large column numbers
+      // Expected: Handle large numbers without overflow
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1478,6 +1591,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle getregtype returning unexpected format", async () => {
+      // Buffer: 3 lines total
+      // Operation: Line-wise delete of lines 2-3, but register type is "unknown"
+      // Expected: Treat unknown type as char-wise, trigger special line+char handling
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1518,6 +1634,9 @@ describe("executeReplaceOperator", () => {
 
   describe("register content edge cases", () => {
     it("should handle empty register", async () => {
+      // Buffer: Line with 20 characters
+      // Operation: Delete cols 5-10 and paste from empty register
+      // Expected: Execute all commands even with empty register content
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1553,6 +1672,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle register with only newlines", async () => {
+      // Buffer: 10 lines of text
+      // Operation: Delete line 2 and paste register containing only newlines
+      // Expected: Delete line and paste newline content
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1586,6 +1708,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle register with control characters", async () => {
+      // Buffer: Line with 10 characters
+      // Operation: Delete cols 1-5 and paste register with control chars (\x01\x02\x03\t\r)
+      // Expected: Handle control characters in paste operation
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1622,6 +1747,9 @@ describe("executeReplaceOperator", () => {
 
   describe("isEmptyRegion additional edge cases", () => {
     it("should handle same position (line and column)", async () => {
+      // Buffer: Any content
+      // Operation: Start and end at exact same position (2,5)
+      // Expected: Delete single character at cursor position
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1651,6 +1779,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should detect empty region when end column equals start column minus 1", async () => {
+      // Buffer: Any content
+      // Operation: Same line, end column (9) < start column (10)
+      // Expected: Detect as empty region, skip execution
       // Arrange
       let commandExecuted = false
       const mockVimApi = createMockVimApi({
@@ -1681,6 +1812,9 @@ describe("executeReplaceOperator", () => {
 
   describe("getVisualCommand edge cases", () => {
     it("should use default 'v' for unexpected motionWise value", async () => {
+      // Buffer: Line with 10 characters
+      // Operation: Pass unexpected motionWise value "unexpected"
+      // Expected: Default to 'v' (character-wise) visual mode
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1719,6 +1853,9 @@ describe("executeReplaceOperator", () => {
 
   describe("multi-line character-wise operations", () => {
     it("should handle character-wise selection spanning multiple lines", async () => {
+      // Buffer: 10 lines of text
+      // Operation: Character selection from line 2 col 10 to line 4 col 5
+      // Expected: Multi-line character-wise deletion and paste
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1757,6 +1894,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle character-wise from end of line to start of next line", async () => {
+      // Buffer: Line 1 has 20 chars, line 2 has 15 chars
+      // Operation: Select from end of line 1 (col 20) to start of line 2 (col 1)
+      // Expected: Cross-line selection including newline character
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1798,6 +1938,9 @@ describe("executeReplaceOperator", () => {
 
   describe("complex paste command decision scenarios", () => {
     it("should use P for line deletion when not at buffer end", async () => {
+      // Buffer: 5 lines total
+      // Operation: Delete line 2 (not the last line) with char-wise register
+      // Expected: Use 'P' since we're not at buffer end
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1837,6 +1980,9 @@ describe("executeReplaceOperator", () => {
 
   describe("special register handling", () => {
     it("should handle numeric registers (0-9)", async () => {
+      // Buffer: Line with 10 characters
+      // Operation: Delete cols 1-5 using numeric register "3"
+      // Expected: Paste from numbered register correctly
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
@@ -1869,6 +2015,9 @@ describe("executeReplaceOperator", () => {
     })
 
     it("should handle read-only registers like '%' (current file)", async () => {
+      // Buffer: Line with 10 characters
+      // Operation: Delete cols 1-5 and paste from read-only register "%" (filename)
+      // Expected: Handle read-only register in paste command
       // Arrange
       const commands: string[] = []
       const mockVimApi = createMockVimApi({
