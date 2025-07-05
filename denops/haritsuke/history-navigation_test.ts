@@ -120,7 +120,7 @@ Deno.test("navigatePrev - applies previous entry when rounder is active", async 
 
   // Verify rounder operations
   assertEquals(getRounderSpy.calls.length, 1)
-  assertEquals(isActiveSpy.calls.length, 3) // Called three times
+  assertEquals(isActiveSpy.calls.length, 2) // Called twice: once for check, once for logging
   assertEquals(previousSpy.calls.length, 1)
 
   // Verify applyHistoryEntry was called with correct arguments

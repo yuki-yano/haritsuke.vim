@@ -22,11 +22,20 @@ export const createMockPluginState = (overrides?: Partial<PluginState>): PluginS
       region_hl_groupname: "HaritsukePasteRegion",
     },
     database: {
-      getStats: () => ({ entryCount: 0, totalSize: 0, oldestTimestamp: 0, newestTimestamp: 0 }),
-      addEntry: spy(() => Promise.resolve()),
-      getAllEntries: spy(() => Promise.resolve([])),
-      vacuum: spy(() => Promise.resolve()),
-      close: spy(() => Promise.resolve()),
+      init: spy(() => Promise.resolve()),
+      add: spy(() =>
+        Promise.resolve({
+          id: "1",
+          content: "test",
+          regtype: "v" as const,
+          timestamp: Date.now(),
+          size: 4,
+        })
+      ),
+      getRecent: spy(() => []),
+      getStats: () => ({ totalCount: 0, maxHistory: 100 }),
+      getSyncStatus: () => ({ lastTimestamp: 0, entryCount: 0 }),
+      close: spy(),
     } as unknown as PluginState["database"],
     cache: createYankCache(100),
     rounderManager: {
