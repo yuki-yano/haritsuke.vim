@@ -218,14 +218,6 @@ Replace operator:
     grip
 <
 
-Multi-register support:
->
-    "ayiw   " Yank to register 'a'
-    "byy    " Yank to register 'b'
-    "ap     " Paste from register 'a' with history
-    "bp     " Paste from register 'b' with history
-<
-
 Visual mode:
 >
     " Select text in visual mode, then:
