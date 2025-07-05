@@ -1,4 +1,5 @@
 import type { YankEntry } from "./types.ts"
+import { CACHE_DEFAULTS } from "./constants.ts"
 
 /**
  * In-memory yank history cache management
@@ -91,7 +92,7 @@ export const createYankCache = (maxSize: number = 100): YankCache => {
   /**
    * Search functionality (partial content match)
    */
-  const search = (query: string, limit: number = 20): YankEntry[] => {
+  const search = (query: string, limit: number = CACHE_DEFAULTS.SEARCH_LIMIT): YankEntry[] => {
     const lowerQuery = query.toLowerCase()
     return entries
       .filter((entry) => entry.content.toLowerCase().includes(lowerQuery))

@@ -13,6 +13,7 @@ import type { RegisterMonitor } from "./register-monitor.ts"
 import type { PasteHandler } from "./paste-handler.ts"
 import type { HaritsukeConfig } from "./types.ts"
 import type { FileSystemApi, VimApi } from "./vim-api.ts"
+import { CONFIG_DEFAULTS } from "./constants.ts"
 
 export type PluginState = {
   database: YankDatabase | null
@@ -44,13 +45,13 @@ export const createPluginState = (): PluginState => {
     registerMonitor: null,
     pasteHandler: null,
     config: {
-      persist_path: "",
-      max_entries: 100,
-      max_data_size: 1048576,
-      register_keys: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
-      debug: false,
-      use_region_hl: true,
-      region_hl_groupname: "HaritsukeRegion",
+      persist_path: CONFIG_DEFAULTS.PERSIST_PATH,
+      max_entries: CONFIG_DEFAULTS.MAX_ENTRIES,
+      max_data_size: CONFIG_DEFAULTS.MAX_DATA_SIZE,
+      register_keys: CONFIG_DEFAULTS.REGISTER_KEYS,
+      debug: CONFIG_DEFAULTS.DEBUG,
+      use_region_hl: CONFIG_DEFAULTS.USE_REGION_HL,
+      region_hl_groupname: CONFIG_DEFAULTS.REGION_HL_GROUPNAME,
     },
     vimApi: null,
     fileSystemApi: null,

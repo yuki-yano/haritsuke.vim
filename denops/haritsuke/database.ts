@@ -4,6 +4,7 @@ import { join } from "./deps/std.ts"
 import { ensureDir } from "./deps/std.ts"
 import type { RegisterType, YankEntry } from "./types.ts"
 import type { DebugLogger } from "./debug-logger.ts"
+import { DATABASE, SQLITE_PRAGMA } from "./constants.ts"
 
 /**
  * Type definition for row data returned from SQLite
@@ -43,7 +44,7 @@ export type SyncStatus = {
  */
 export type YankDatabase = {
   init: () => Promise<void>
-  add: (entry: Omit<YankEntry, "id" | "hash" | "size">) => Promise<YankEntry>
+  add: (entry: Omit<YankEntry, "id" | "size">) => Promise<YankEntry>
   getRecent: (limit?: number) => YankEntry[]
   getStats: () => { totalCount: number; maxHistory: number }
   getSyncStatus: () => SyncStatus
@@ -199,7 +200,7 @@ export const createYankDatabase = (
   const init = async (): Promise<void> => {
     try {
       await ensureDir(dataDir)
-      const dbPath = join(dataDir, "history.db")
+      const dbPath = join(dataDir, DATABASE.FILE_NAME)
 
       // Try database connection
       try {
@@ -235,12 +236,12 @@ export const createYankDatabase = (
       try {
         // WAL mode supports concurrent access from multiple processes
         db.exec(`
-          PRAGMA journal_mode = WAL;          -- Write-Ahead Logging (multi-process support)
-          PRAGMA synchronous = NORMAL;        -- Balanced synchronous mode
-          PRAGMA cache_size = -2000;          -- 2MB cache
-          PRAGMA temp_store = MEMORY;         -- Temporary data in memory
-          PRAGMA busy_timeout = 5000;         -- 5 second timeout (lock wait)
-          PRAGMA wal_checkpoint = TRUNCATE;   -- Periodic WAL file cleanup
+          PRAGMA journal_mode = ${SQLITE_PRAGMA.OPTIMAL.JOURNAL_MODE};
+          PRAGMA synchronous = ${SQLITE_PRAGMA.OPTIMAL.SYNCHRONOUS};
+          PRAGMA cache_size = ${SQLITE_PRAGMA.OPTIMAL.CACHE_SIZE};
+          PRAGMA temp_store = ${SQLITE_PRAGMA.OPTIMAL.TEMP_STORE};
+          PRAGMA busy_timeout = ${SQLITE_PRAGMA.OPTIMAL.BUSY_TIMEOUT};
+          PRAGMA wal_checkpoint = ${SQLITE_PRAGMA.OPTIMAL.WAL_CHECKPOINT};
         `)
       } catch (error) {
         logger?.log(
@@ -249,9 +250,9 @@ export const createYankDatabase = (
         )
         // Apply only basic settings
         db.exec(`
-          PRAGMA journal_mode = DELETE;       -- Safe mode
-          PRAGMA synchronous = FULL;          -- Safest synchronous mode
-          PRAGMA busy_timeout = 5000;         -- 5 second timeout
+          PRAGMA journal_mode = ${SQLITE_PRAGMA.FALLBACK.JOURNAL_MODE};
+          PRAGMA synchronous = ${SQLITE_PRAGMA.FALLBACK.SYNCHRONOUS};
+          PRAGMA busy_timeout = ${SQLITE_PRAGMA.FALLBACK.BUSY_TIMEOUT};
         `)
       }
 
@@ -274,9 +275,9 @@ export const createYankDatabase = (
     return Promise.resolve().then(() => {
       const size = new TextEncoder().encode(entry.content).length
 
-      // Size limit check (512KB)
-      if (size > 512000) {
-        throw new Error(`Content too large: ${size} bytes (max: 512000)`)
+      // Size limit check
+      if (size > DATABASE.MAX_CONTENT_SIZE) {
+        throw new Error(`Content too large: ${size} bytes (max: ${DATABASE.MAX_CONTENT_SIZE})`)
       }
 
       try {
