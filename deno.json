@@ -15,8 +15,8 @@
   "tasks": {
     "lint": "deno lint",
     "check": "deno check denops",
-    "test": "deno test --allow-env",
-    "test:unit": "deno test --allow-env",
+    "test": "deno test --allow-env --allow-read --allow-write",
+    "test:unit": "deno test --allow-env --allow-read --allow-write",
     "test:watch": "deno test --watch",
     "test:coverage": "deno test --coverage=coverage",
     "coverage:report": "deno coverage coverage",
