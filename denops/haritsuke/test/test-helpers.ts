@@ -4,8 +4,7 @@
 
 import { spy } from "../deps/test.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import { createMockFileSystemApi, createMockVimApi } from "../vim/vim-api.ts"
-import type { VimApi } from "../vim/vim-api.ts"
+import { createMockFileSystemApi, createMockVimApi, type VimApi } from "../vim/vim-api.ts"
 import { createYankCache } from "../data/cache.ts"
 
 /**
@@ -41,10 +40,29 @@ export const createMockPluginState = (overrides?: Partial<PluginState>): PluginS
     rounderManager: {
       getRounder: spy(() =>
         Promise.resolve({
-          isActive: () => false,
+          start: spy(() => Promise.resolve()),
+          next: spy(() => Promise.resolve(null)),
+          previous: spy(() => Promise.resolve(null)),
           stop: spy(),
+          isActive: spy(() => false),
+          getPasteInfo: spy(() => null),
+          setUndoSeq: spy(),
+          setUndoFilePath: spy(),
+          getUndoFilePath: spy(() => null),
+          setCursorPos: spy(),
+          getCursorPos: spy(() => null),
+          setChangedTick: spy(),
+          getChangedTick: spy(() => 0),
+          getCurrentEntry: spy(() => null),
+          setPasteRange: spy(),
+          getPasteRange: spy(() => null),
+          setBeforePasteCursorPos: spy(),
+          getBeforePasteCursorPos: spy(() => null),
+          isFirstCycle: spy(() => true),
         })
       ),
+      deleteRounder: spy(),
+      clear: spy(),
     } as unknown as PluginState["rounderManager"],
     syncManager: null,
     pasteHandler: null,
@@ -104,11 +122,13 @@ export const createCommonVimApiMock = (handlers: VimApiMockHandlers = {}): VimAp
       if (expr.startsWith("strlen(getline(")) {
         const lineMatch = expr.match(/strlen\(getline\((\d+)\)\)/)
         if (lineMatch) {
-          const lineNum = parseInt(lineMatch[1])
+          const lineNum = parseInt(lineMatch[1], 10)
           return Promise.resolve(lineHandlers[`strlen_${lineNum}`] || 10)
         }
       }
       if (expr.startsWith("getregtype(")) {
+        // Note: This regex only matches single-character register names
+        // This is intentional as Vim registers are single characters (a-z, A-Z, 0-9, ", etc.)
         const regMatch = expr.match(/getregtype\(['"](.)['"]\)/)
         if (regMatch) {
           const reg = regMatch[1]
