@@ -124,7 +124,7 @@ let g:haritsuke_config = {
   \ 'max_data_size': 1048576,   " Maximum size per entry in bytes (1MB)
   \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
   \ 'debug': v:false,           " Enable debug logging
-  \ 'use_region_hl': v:false,   " Enable highlight during paste cycling
+  \ 'use_region_hl': v:true,    " Enable highlight during paste cycling
   \ 'region_hl_groupname': 'HaritsukeRegion'  " Highlight group name
   \ }
 ```
@@ -138,7 +138,7 @@ vim.g.haritsuke_config = {
   max_data_size = 1048576,   -- Maximum size per entry in bytes (1MB)
   register_keys = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
   debug = false,             -- Enable debug logging
-  use_region_hl = false,     -- Enable highlight during paste cycling
+  use_region_hl = true,      -- Enable highlight during paste cycling
   region_hl_groupname = 'HaritsukeRegion'  -- Highlight group name
 }
 ```
@@ -150,7 +150,7 @@ vim.g.haritsuke_config = {
 - **max_data_size**: Maximum size in bytes for a single yank entry (default: 1048576 = 1MB)
 - **register_keys**: Registers to track for history (default: all alphanumeric and special registers)
 - **debug**: Enable debug logging for troubleshooting (default: false)
-- **use_region_hl**: Show visual highlight of pasted region during cycling (default: false)
+- **use_region_hl**: Show visual highlight of pasted region during cycling (default: true)
 - **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
 
 ### Highlight customization

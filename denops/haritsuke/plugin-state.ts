@@ -49,7 +49,7 @@ export const createPluginState = (): PluginState => {
       max_data_size: 1048576,
       register_keys: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
       debug: false,
-      use_region_hl: false,
+      use_region_hl: true,
       region_hl_groupname: "HaritsukeRegion",
     },
     vimApi: null,

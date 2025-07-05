@@ -126,7 +126,7 @@ Configure haritsuke.vim by setting `g:haritsuke_config` dictionary:
       \ 'max_data_size': 1048576,
       \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
       \ 'debug': v:false,
-      \ 'use_region_hl': v:false,
+      \ 'use_region_hl': v:true,
       \ 'region_hl_groupname': 'HaritsukeRegion'
       \ }
 <
@@ -155,7 +155,7 @@ debug                                   *g:haritsuke_config.debug*
 
 use_region_hl                           *g:haritsuke_config.use_region_hl*
     Show visual highlight of pasted region during cycling.
-    Default: v:false
+    Default: v:true
 
 region_hl_groupname                     *g:haritsuke_config.region_hl_groupname*
     Vim highlight group for paste region highlighting.
