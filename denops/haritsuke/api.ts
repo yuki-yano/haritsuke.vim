@@ -198,7 +198,6 @@ export const createApi = (denops: Denops, state: PluginState) => {
     })
   }
 
-
   const onStopRounder = async (args: unknown): Promise<void> => {
     await handleStopRounder(denops, state, args, {
       stopRounderWithCleanup,

@@ -34,4 +34,3 @@ export type PasteInfo = {
   visualMode?: boolean // true if paste originated from visual mode
   actualPasteCommand?: "p" | "P" | "gp" | "gP" // The actual paste command used in replace operator
 }
-
