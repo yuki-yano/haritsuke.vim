@@ -1,0 +1,51 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Update dependencies
+        id: update
+        run: |
+          # Update deps
+          find . -name "*.ts" -type f | xargs grep -l "https://deno.land\|jsr:@" | while read -r file; do
+            echo "Updating $file"
+            deno cache --reload "$file" || true
+          done
+          
+          # Check if there are changes
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.update.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dependencies"
+          title: "chore: update dependencies"
+          body: |
+            ## Update Dependencies
+            
+            This PR updates the project dependencies.
+            
+            ### Changes
+            - Updated Deno dependencies
+            
+            Please review and merge if all tests pass.
+          branch: update-dependencies
+          delete-branch: true

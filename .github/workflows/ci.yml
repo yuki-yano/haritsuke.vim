@@ -5,59 +5,16 @@ on:
     branches:
       - main
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        deno-version: [v1.x]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: ${{ matrix.deno-version }}
-
-      - name: Cache Deno dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.deno
-            ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/*.ts') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
-
-      - name: Run CI tasks
-        run: deno task ci
-
-      - name: Upload coverage reports
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          deno task test:coverage
-          deno task coverage:report
-
-  lint-commit:
-    name: Lint Commit Messages
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Lint commit messages
-        uses: wagoid/commitlint-github-action@v5
+      - uses: denoland/setup-deno@v2
         with:
-          configFile: '.commitlintrc.json'
-        continue-on-error: true
+          deno-version: v2.x
+
+      - name: Run tests
+        run: deno task ci
