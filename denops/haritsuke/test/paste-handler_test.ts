@@ -3,7 +3,7 @@
  * Testing paste functionality with dependency injection
  */
 
-import { assert, assertEquals, assertSpyCall, spy } from "../deps/test.ts"
+import { assert, assertEquals, assertSpyCall, spy, describe, it } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { createPasteHandler } from "../core/paste-handler.ts"
 import { createRounder } from "../core/rounder.ts"
@@ -26,7 +26,9 @@ const createTestEntry = (id: string, content: string, timestamp?: number): YankE
   timestamp: timestamp || Date.now(),
 })
 
-Deno.test("createPasteHandler - applyHistoryEntry undoes and applies new entry", async () => {
+describe("createPasteHandler", () => {
+  describe("applyHistoryEntry", () => {
+    it("undoes and applies new entry", async () => {
   // Mock VimApi with spies
   let changedtick = 100
   let undoExecuted = false
@@ -102,9 +104,9 @@ Deno.test("createPasteHandler - applyHistoryEntry undoes and applies new entry",
   assertEquals(setGlobalVarCalls.length, 2, "Should call setGlobalVar twice for flag management")
   assertEquals(setGlobalVarCalls[0].args, ["_haritsuke_applying_history", 1])
   assertEquals(setGlobalVarCalls[1].args, ["_haritsuke_applying_history", 0])
-})
+    })
 
-Deno.test("createPasteHandler - applyHistoryEntry: manages _haritsuke_applying_history flag", async () => {
+    it("manages _haritsuke_applying_history flag", async () => {
   const callbacks = createMockCallbacks()
 
   // Track setGlobalVar calls
@@ -165,9 +167,9 @@ Deno.test("createPasteHandler - applyHistoryEntry: manages _haritsuke_applying_h
     (call) => call.name === "_haritsuke_applying_history" && call.value === 0,
   )
   assert(setIndex < clearIndex, "Should set flag before clearing it")
-})
+    })
 
-Deno.test("createPasteHandler - applyHistoryEntry: clears flag on error", async () => {
+    it("clears flag on error", async () => {
   const callbacks = createMockCallbacks()
 
   // Track setGlobalVar calls
@@ -226,4 +228,6 @@ Deno.test("createPasteHandler - applyHistoryEntry: clears flag on error", async 
     (call) => call.name === "_haritsuke_applying_history" && call.value === 0,
   )
   assertEquals(clearCalls.length, 1, "Should clear flag even on error")
+    })
+  })
 })

@@ -2,7 +2,7 @@
  * Tests for paste preparation module
  */
 
-import { assertEquals, spy } from "../deps/test.ts"
+import { assertEquals, spy, describe, it } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import { generatePasteCommand, initializeRounderForPaste, saveUndoFile } from "../core/paste-preparation.ts"
@@ -33,7 +33,9 @@ const createMockLogger = () => {
   }
 }
 
-Deno.test("generatePasteCommand - visual mode with default register", () => {
+describe("paste preparation", () => {
+  describe("generatePasteCommand", () => {
+    it("visual mode with default register", () => {
   const data: PreparePasteData = {
     mode: "p",
     vmode: "v",
@@ -42,9 +44,9 @@ Deno.test("generatePasteCommand - visual mode with default register", () => {
   }
   const cmd = generatePasteCommand(data)
   assertEquals(cmd, "normal! gvp")
-})
+    })
 
-Deno.test("generatePasteCommand - normal mode with named register", () => {
+    it("normal mode with named register", () => {
   const data: PreparePasteData = {
     mode: "P",
     vmode: "n",
@@ -53,9 +55,9 @@ Deno.test("generatePasteCommand - normal mode with named register", () => {
   }
   const cmd = generatePasteCommand(data)
   assertEquals(cmd, 'normal! "a3P')
-})
+    })
 
-Deno.test("generatePasteCommand - visual mode with named register", () => {
+    it("visual mode with named register", () => {
   const data: PreparePasteData = {
     mode: "gp",
     vmode: "v",
@@ -64,9 +66,11 @@ Deno.test("generatePasteCommand - visual mode with named register", () => {
   }
   const cmd = generatePasteCommand(data)
   assertEquals(cmd, 'normal! gv"b1gp')
-})
+    })
+  })
 
-Deno.test("saveUndoFile - creates temp file when undo tree has entries", async () => {
+  describe("saveUndoFile", () => {
+    it("creates temp file when undo tree has entries", async () => {
   const mockDenops = createMockDenops((fn: string) => {
     if (fn === "undotree") {
       return Promise.resolve({
@@ -101,9 +105,9 @@ Deno.test("saveUndoFile - creates temp file when undo tree has entries", async (
   } finally {
     Deno.makeTempFile = originalMakeTempFile
   }
-})
+    })
 
-Deno.test("saveUndoFile - returns undefined when undo tree is empty", async () => {
+    it("returns undefined when undo tree is empty", async () => {
   const mockDenops = createMockDenops((fn: string) => {
     if (fn === "undotree") {
       return Promise.resolve({
@@ -122,9 +126,11 @@ Deno.test("saveUndoFile - returns undefined when undo tree is empty", async () =
   // Verify no commands were executed
   const cmdCalls = (mockDenops.cmd as ReturnType<typeof spy>).calls
   assertEquals(cmdCalls.length, 0)
-})
+    })
+  })
 
-Deno.test("initializeRounderForPaste - stops active rounder and initializes new one", async () => {
+  describe("initializeRounderForPaste", () => {
+    it("stops active rounder and initializes new one", async () => {
   const mockLogger = createMockLogger()
 
   // Mock functions
@@ -196,4 +202,6 @@ Deno.test("initializeRounderForPaste - stops active rounder and initializes new 
   })
   assertEquals(setBeforePasteCursorPosSpy.calls.length, 1)
   assertEquals(setBeforePasteCursorPosSpy.calls[0]?.args[0], [0, 10, 5, 0])
+    })
+  })
 })

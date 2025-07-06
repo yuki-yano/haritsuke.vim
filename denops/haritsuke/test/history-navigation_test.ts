@@ -2,7 +2,7 @@
  * Tests for history navigation
  */
 
-import { assertEquals, spy } from "../deps/test.ts"
+import { assertEquals, spy, describe, it } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { navigateNext, navigatePrev } from "../core/history-navigation.ts"
 import type { PluginState } from "../state/plugin-state.ts"
@@ -32,7 +32,9 @@ const createMockLogger = () => {
   }
 }
 
-Deno.test("navigatePrev - returns early when components are missing", async () => {
+describe("history navigation", () => {
+  describe("navigatePrev", () => {
+    it("returns early when components are missing", async () => {
   const mockDenops = createMockDenops()
   const mockLogger = createMockLogger()
   const syncIfNeededSpy = spy(() => Promise.resolve(false))
@@ -57,9 +59,9 @@ Deno.test("navigatePrev - returns early when components are missing", async () =
     (log) => log.category === "cycle" && log.message === "cyclePrev: not ready",
   )
   assertEquals(!!notReadyLog, true)
-})
+    })
 
-Deno.test("navigatePrev - applies previous entry when rounder is active", async () => {
+    it("applies previous entry when rounder is active", async () => {
   const mockDenops = createMockDenops((fn: string) => {
     if (fn === "bufnr") {
       return Promise.resolve(1)
@@ -134,9 +136,11 @@ Deno.test("navigatePrev - applies previous entry when rounder is active", async 
   assertEquals(pasteInfo.register, '"')
   assertEquals(applyHistoryEntrySpy.calls[0]?.args[4], "/tmp/undo.txt")
   assertEquals(applyHistoryEntrySpy.calls[0]?.args[5], mockRounder)
-})
+    })
+  })
 
-Deno.test("navigateNext - applies next entry when rounder is active", async () => {
+  describe("navigateNext", () => {
+    it("applies next entry when rounder is active", async () => {
   const mockDenops = createMockDenops((fn: string) => {
     if (fn === "bufnr") {
       return Promise.resolve(1)
@@ -207,4 +211,6 @@ Deno.test("navigateNext - applies next entry when rounder is active", async () =
   assertEquals(applyHistoryEntrySpy.calls[0]?.args[3], { mode: "P", count: 1, register: '"' })
   assertEquals(applyHistoryEntrySpy.calls[0]?.args[4], null)
   assertEquals(applyHistoryEntrySpy.calls[0]?.args[5], mockRounder)
+    })
+  })
 })

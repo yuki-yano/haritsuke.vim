@@ -3,7 +3,7 @@
  * Testing register monitoring functionality with dependency injection
  */
 
-import { assertEquals, assertSpyCall, assertSpyCalls, spy } from "../deps/test.ts"
+import { assertEquals, assertSpyCall, assertSpyCalls, spy, describe, it } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { createRegisterMonitor } from "../events/register-monitor.ts"
 import { createYankCache } from "../data/cache.ts"
@@ -44,7 +44,8 @@ const createMockDatabase = () => {
   }
 }
 
-Deno.test("createRegisterMonitor - detects register content changes", async () => {
+describe("createRegisterMonitor", () => {
+  it("detects register content changes", async () => {
   const database = createMockDatabase()
   const cache = createYankCache()
   const rounderManager = createMockRounderManager()
@@ -93,9 +94,9 @@ Deno.test("createRegisterMonitor - detects register content changes", async () =
   // Same content check - should not add duplicate
   await registerMonitor.checkChanges({} as Denops)
   assertEquals(cache.size, 1) // No new entry
-})
+  })
 
-Deno.test("createRegisterMonitor - does not add duplicate when content unchanged", async () => {
+  it("does not add duplicate when content unchanged", async () => {
   const database = createMockDatabase()
   const cache = createYankCache()
   const rounderManager = createMockRounderManager()
@@ -129,9 +130,9 @@ Deno.test("createRegisterMonitor - does not add duplicate when content unchanged
   // Second check with same content - should not add duplicate
   await registerMonitor.checkChanges({} as Denops)
   assertEquals(cache.size, 0) // Still 0, no entry added
-})
+  })
 
-Deno.test("createRegisterMonitor - stops active rounder when new yank detected", async () => {
+  it("stops active rounder when new yank detected", async () => {
   const database = createMockDatabase()
   const cache = createYankCache()
   const rounderManager = createMockRounderManager()
@@ -204,9 +205,9 @@ Deno.test("createRegisterMonitor - stops active rounder when new yank detected",
 
   // Verify highlight was cleared
   assertSpyCalls(mockCallbacks.clearHighlight as ReturnType<typeof spy>, 1)
-})
+  })
 
-Deno.test("createRegisterMonitor - handles array register content", async () => {
+  it("handles array register content", async () => {
   const database = createMockDatabase()
   const cache = createYankCache()
   const rounderManager = createMockRounderManager()
@@ -251,9 +252,9 @@ Deno.test("createRegisterMonitor - handles array register content", async () => 
   const entries = cache.getAll()
   assertEquals(entries[0].content, "different\ncontent")
   assertEquals(entries[0].regtype, "V")
-})
+  })
 
-Deno.test("createRegisterMonitor - reset clears last content", () => {
+  it("reset clears last content", () => {
   const database = createMockDatabase()
   const cache = createYankCache()
   const rounderManager = createMockRounderManager()
@@ -283,4 +284,5 @@ Deno.test("createRegisterMonitor - reset clears last content", () => {
 
   // Verify content was cleared
   assertEquals(registerMonitor.getLastContent(), "")
+  })
 })

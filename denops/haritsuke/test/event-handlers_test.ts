@@ -2,7 +2,7 @@
  * Tests for event handlers
  */
 
-import { assertEquals, spy } from "../deps/test.ts"
+import { assertEquals, spy, describe, it } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
 import type { PluginState } from "../state/plugin-state.ts"
@@ -31,7 +31,9 @@ const createMockLogger = () => {
   }
 }
 
-Deno.test("handleTextYankPost - calls registerMonitor.checkChanges when all components are present", async () => {
+describe("event handlers", () => {
+  describe("handleTextYankPost", () => {
+    it("calls registerMonitor.checkChanges when all components are present", async () => {
   const mockDenops = createMockDenops()
   const mockLogger = createMockLogger()
   const checkChangesSpy = spy((_denops: Denops) => Promise.resolve())
@@ -55,9 +57,9 @@ Deno.test("handleTextYankPost - calls registerMonitor.checkChanges when all comp
   assertEquals(logs.length, 1)
   assertEquals(logs[0].category, "yank")
   assertEquals(logs[0].message, "onTextYankPost called")
-})
+    })
 
-Deno.test("handleTextYankPost - returns early when components are missing", async () => {
+    it("returns early when components are missing", async () => {
   const mockDenops = createMockDenops()
   const mockLogger = createMockLogger()
   const checkChangesSpy = spy((_denops: Denops) => Promise.resolve())
@@ -82,9 +84,11 @@ Deno.test("handleTextYankPost - returns early when components are missing", asyn
   const logs = mockLogger.getLogs()
   assertEquals(logs.length, 1)
   assertEquals((logs[0].data as { database?: boolean })?.database, false)
-})
+    })
+  })
 
-Deno.test("handleCursorMoved - skips processing when _haritsuke_applying_history is set", async () => {
+  describe("handleCursorMoved", () => {
+    it("skips processing when _haritsuke_applying_history is set", async () => {
   const mockDenops = createMockDenops((expr: string) => {
     if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
       return Promise.resolve(1)
@@ -115,9 +119,11 @@ Deno.test("handleCursorMoved - skips processing when _haritsuke_applying_history
   // Verify helpers were not called
   assertEquals(stopRounderSpy.calls.length, 0)
   assertEquals(clearHighlightSpy.calls.length, 0)
-})
+    })
+  })
 
-Deno.test("handleStopRounder - skips processing when _haritsuke_applying_history is set", async () => {
+  describe("handleStopRounder", () => {
+    it("skips processing when _haritsuke_applying_history is set", async () => {
   const mockDenops = createMockDenops((expr: string) => {
     if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
       return Promise.resolve(1)
@@ -150,9 +156,9 @@ Deno.test("handleStopRounder - skips processing when _haritsuke_applying_history
 
   // Verify stopRounder was not called
   assertEquals(stopRounderSpy.calls.length, 0)
-})
+    })
 
-Deno.test("handleStopRounder - stops active rounder", async () => {
+    it("stops active rounder", async () => {
   const mockDenops = createMockDenops((expr: string) => {
     if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
       return Promise.resolve(0)
@@ -189,4 +195,6 @@ Deno.test("handleStopRounder - stops active rounder", async () => {
   assertEquals(stopRounderSpy.calls[0]?.args[1], state)
   assertEquals(stopRounderSpy.calls[0]?.args[2], mockRounder)
   assertEquals(stopRounderSpy.calls[0]?.args[3], "event triggered")
+    })
+  })
 })

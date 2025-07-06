@@ -2,7 +2,7 @@
  * Detailed tests for rounder cycling behavior
  */
 
-import { assertEquals, assertExists } from "../deps/test.ts"
+import { assertEquals, assertExists, describe, it } from "../deps/test.ts"
 import { createRounder } from "../core/rounder.ts"
 import type { YankEntry } from "../types.ts"
 
@@ -14,7 +14,8 @@ const createTestEntry = (id: string, content: string, timestamp?: number): YankE
   timestamp: timestamp || Date.now(),
 })
 
-Deno.test("rounder - detailed cycle test: can cycle through all entries", async () => {
+describe("rounder", () => {
+  it("detailed cycle test: can cycle through all entries", async () => {
   const rounder = createRounder(null) // No logger for tests
 
   // Create 5 entries (newest to oldest)
@@ -88,9 +89,9 @@ Deno.test("rounder - detailed cycle test: can cycle through all entries", async 
   const next5 = await rounder.next()
   console.log("C-n 5th time:", next5)
   assertEquals(next5, null, "Cannot go newer than newest")
-})
+  })
 
-Deno.test("rounder - paste newest entry and cycle", async () => {
+  it("paste newest entry and cycle", async () => {
   const rounder = createRounder(null)
 
   const entries = [
@@ -149,9 +150,9 @@ Deno.test("rounder - paste newest entry and cycle", async () => {
   // Still can't go newer
   const next6 = await rounder.next()
   assertEquals(next6, null)
-})
+  })
 
-Deno.test("rounder - verify entries are not cleared after start", async () => {
+  it("verify entries are not cleared after start", async () => {
   const rounder = createRounder(null)
 
   const entries = [
@@ -177,4 +178,5 @@ Deno.test("rounder - verify entries are not cleared after start", async () => {
 
   const next2 = await rounder.next()
   assertEquals(next2, null, "Should not be able to go newer than newest")
+  })
 })
