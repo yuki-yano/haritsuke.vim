@@ -112,6 +112,8 @@ MAPPINGS                                        *haritsuke-mappings*
 <Plug>(haritsuke-replace)
     Replace operator. Use with motions to replace text with
     register content. For example, `griw` replaces inner word.
+    Smart indentation is automatically applied for line-wise
+    replacements when |g:haritsuke_config.smart_indent| is enabled.
 
                                                 *<Plug>(haritsuke-toggle-smart-indent)*
 <Plug>(haritsuke-toggle-smart-indent)

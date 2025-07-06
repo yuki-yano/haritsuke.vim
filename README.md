@@ -6,7 +6,7 @@ Advanced yank history manager with cycling support for Vim/Neovim powered by den
 
 - **Persistent yank history**: Saves yank history to disk and restores it across Vim sessions
 - **Paste cycling**: After pasting, use `Ctrl-n`/`Ctrl-p` to cycle through yank history
-- **Replace operator**: Replace text with yanked content using operators
+- **Replace operator**: Replace text with yanked content using operators (supports smart indentation)
 - **Multi-register support**: Track history for multiple registers
 - **Smart highlighting**: Visual feedback during paste cycling
 - **Database-backed storage**: Efficient storage with SQLite
@@ -91,6 +91,7 @@ vim.keymap.set('n', '<C-i>', '<Plug>(haritsuke-toggle-smart-indent)')
 2. **Enhanced paste**: Use your regular paste commands with added history support
 3. **History cycling**: After pasting, press `<C-n>`/`<C-p>` to cycle through previous yanks
 4. **Replace operator**: Use `gr{motion}` to replace text with register content (e.g., `griw` to replace inner word)
+   - Smart indentation is automatically applied for line-wise replacements when enabled
 
 ### Example workflow
 

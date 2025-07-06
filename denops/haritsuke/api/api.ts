@@ -274,6 +274,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
       motionWise: motionWise as "char" | "line" | "block",
       register,
       visualMode,
+      smartIndent: state.config.smart_indent,
     }, state.vimApi!)
 
     // Initialize rounder for cycling through history after operator-replace
