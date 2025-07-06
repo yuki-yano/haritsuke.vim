@@ -160,7 +160,7 @@ vim.g.haritsuke_config = {
 - **debug**: Enable debug logging for troubleshooting (default: false)
 - **use_region_hl**: Show visual highlight of pasted region during cycling (default: true)
 - **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
-- **smart_indent**: Enable smart indentation adjustment for line-wise paste operations. Automatically adjusts pasted lines to match current context (default: true)
+- **smart_indent**: Enable smart indentation adjustment for line-wise paste operations. Automatically adjusts pasted lines to match the current context (default: true)
 
 ### Highlight customization
 

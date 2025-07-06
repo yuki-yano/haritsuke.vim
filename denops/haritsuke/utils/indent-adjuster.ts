@@ -16,11 +16,7 @@ export function detectMinIndent(lines: string[]): string {
 
     // Extract leading whitespace
     const match = line.match(/^(\s*)/)
-    if (!match) {
-      continue
-    }
-
-    const indent = match[1]
+    const indent = match![1]
     if (minIndent === null || indent.length < minIndent.length) {
       minIndent = indent
     }
@@ -105,12 +101,9 @@ export async function adjustContentIndentSmart(
       const indentExpr = await vimApi.getbufvar(0, "&indentexpr") as string
       let indentCount = 0
 
-      if (indentExpr) {
-        // Use indentexpr if available
-        const tempContent = "temp"
-        await vimApi.cmd(`silent! normal! o${tempContent}`)
-        const indentWidth = await vimApi.eval(`indent(${nextLineNum})`) as number
-        await vimApi.cmd("silent! normal! u")
+      if (indentExpr && shiftWidth > 0) {
+        // Calculate indent for the next line position without buffer modification
+        const indentWidth = await vimApi.eval(`cindent(${nextLineNum})`) as number
         indentCount = Math.floor(indentWidth / shiftWidth)
       }
 
