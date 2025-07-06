@@ -119,3 +119,39 @@ function! haritsuke#list() abort
     return []
   endtry
 endfunction
+
+function! haritsuke#toggle_smart_indent() abort
+  if !denops#plugin#is_loaded('haritsuke')
+    return
+  endif
+
+  call denops#plugin#wait('haritsuke')
+  call s:ensure_initialized()
+
+  try
+    call denops#request('haritsuke', 'toggleSmartIndent', [])
+  catch
+    " Ignore errors
+  endtry
+endfunction
+
+function! haritsuke#do_paste_no_smart_indent(mode, vmode) abort
+  call denops#plugin#wait('haritsuke')
+  
+  " Temporarily disable smart_indent
+  let l:saved_smart_indent = get(g:haritsuke_config, 'smart_indent', v:true)
+  let g:haritsuke_config.smart_indent = v:false
+  
+  " Update config hash to force re-initialization
+  let s:last_config_hash = ''
+  
+  try
+    " Call regular paste function
+    call haritsuke#do_paste(a:mode, a:vmode)
+  finally
+    " Restore original smart_indent setting
+    let g:haritsuke_config.smart_indent = l:saved_smart_indent
+    " Update config hash again
+    let s:last_config_hash = ''
+  endtry
+endfunction

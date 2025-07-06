@@ -24,6 +24,7 @@ export type HaritsukeConfig = {
   debug: boolean
   use_region_hl?: boolean
   region_hl_groupname?: string
+  smart_indent?: boolean
 }
 
 // Paste information for rounder

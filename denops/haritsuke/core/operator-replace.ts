@@ -5,11 +5,14 @@
 
 import type { VimApi } from "../vim/vim-api.ts"
 import { SPECIAL_REGISTERS, VISUAL_MODE } from "../constants.ts"
+import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
+import type { PasteInfo } from "../types.ts"
 
 export type ReplaceOperatorOptions = {
   motionWise: "char" | "line" | "block"
   register: string
   visualMode?: boolean // true if called from visual mode
+  smartIndent?: boolean // true to enable smart indent adjustment
 }
 
 /**
@@ -139,6 +142,42 @@ export const executeReplaceOperator = async (
   const regtype = String(await vimApi.eval(`getregtype('${options.register}')`))
   const isLineWiseRegister = regtype.startsWith("V") || regtype === "\x16" // V or ^V
 
+  // Apply smart indent adjustment if enabled and line-wise operation
+  let actualRegister = options.register
+  let originalRegContent: string | undefined
+  let originalRegType: string | undefined
+
+  if (options.smartIndent && options.motionWise === "line" && isLineWiseRegister) {
+    // Get original register content
+    const content = String(await vimApi.eval(`getreg('${options.register}')`))
+
+    // Create PasteInfo for smart indent adjustment
+    const pasteInfo: PasteInfo = {
+      mode: pasteCmd as "p" | "P" | "gp" | "gP",
+      count: 1,
+      register: options.register,
+    }
+
+    // Adjust content based on current line indentation
+    const adjustedContent = await adjustContentIndentSmart(
+      content,
+      pasteInfo,
+      vimApi,
+      null, // logger not available here
+    )
+
+    // Use temporary register 'z' for adjusted content
+    const tempRegister = "z"
+
+    // Save original z register if it exists
+    originalRegContent = String(await vimApi.eval(`getreg('${tempRegister}')`))
+    originalRegType = String(await vimApi.eval(`getregtype('${tempRegister}')`))
+
+    // Set adjusted content to temporary register
+    await vimApi.setreg(tempRegister, adjustedContent, regtype)
+    actualRegister = tempRegister
+  }
+
   // When deleting lines but pasting character-wise content,
   // we need special handling to ensure correct placement
   if (options.motionWise === "line" && !isLineWiseRegister) {
@@ -148,12 +187,17 @@ export const executeReplaceOperator = async (
     if (pasteCmd === "p" && endPos[1] === bufferEndLine) {
       // Add a new line before pasting
       await vimApi.cmd("silent! normal! o")
-      await vimApi.cmd(`silent! normal! "${options.register}P`)
+      await vimApi.cmd(`silent! normal! "${actualRegister}P`)
     } else {
-      await vimApi.cmd(`silent! normal! "${options.register}${pasteCmd}`)
+      await vimApi.cmd(`silent! normal! "${actualRegister}${pasteCmd}`)
     }
   } else {
-    await vimApi.cmd(`silent! normal! "${options.register}${pasteCmd}`)
+    await vimApi.cmd(`silent! normal! "${actualRegister}${pasteCmd}`)
+  }
+
+  // Restore original z register if we used it
+  if (actualRegister === "z" && originalRegContent !== undefined) {
+    await vimApi.setreg("z", originalRegContent, originalRegType || "v")
   }
 
   // Return the actual paste command used

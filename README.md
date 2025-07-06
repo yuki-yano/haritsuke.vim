@@ -6,10 +6,11 @@ Advanced yank history manager with cycling support for Vim/Neovim powered by den
 
 - **Persistent yank history**: Saves yank history to disk and restores it across Vim sessions
 - **Paste cycling**: After pasting, use `Ctrl-n`/`Ctrl-p` to cycle through yank history
-- **Replace operator**: Replace text with yanked content using operators
+- **Replace operator**: Replace text with yanked content using operators (supports smart indentation)
 - **Multi-register support**: Track history for multiple registers
 - **Smart highlighting**: Visual feedback during paste cycling
 - **Database-backed storage**: Efficient storage with SQLite
+- **Smart indentation**: Automatically adjusts indentation when pasting line-wise content
 
 ## Requirements
 
@@ -59,28 +60,29 @@ nmap <C-p> <Plug>(haritsuke-prev)
 " Replace operator
 nmap gr <Plug>(haritsuke-replace)
 xmap gr <Plug>(haritsuke-replace)
+
+" Toggle smart indent while cycling (optional)
+nmap <C-i> <Plug>(haritsuke-toggle-smart-indent)
 ```
 
 Using Neovim Lua:
 
 ```lua
 -- Enhanced paste commands with history cycling
-vim.keymap.set('n', 'p', '<Plug>(haritsuke-p)')
-vim.keymap.set('n', 'P', '<Plug>(haritsuke-P)')
-vim.keymap.set('n', 'gp', '<Plug>(haritsuke-gp)')
-vim.keymap.set('n', 'gP', '<Plug>(haritsuke-gP)')
-vim.keymap.set('x', 'p', '<Plug>(haritsuke-p)')
-vim.keymap.set('x', 'P', '<Plug>(haritsuke-P)')
-vim.keymap.set('x', 'gp', '<Plug>(haritsuke-gp)')
-vim.keymap.set('x', 'gP', '<Plug>(haritsuke-gP)')
+vim.keymap.set({'n', 'x'}, 'p', '<Plug>(haritsuke-p)')
+vim.keymap.set({'n', 'x'}, 'P', '<Plug>(haritsuke-P)')
+vim.keymap.set({'n', 'x'}, 'gp', '<Plug>(haritsuke-gp)')
+vim.keymap.set({'n', 'x'}, 'gP', '<Plug>(haritsuke-gP)')
 
 -- Cycle through yank history after pasting
 vim.keymap.set('n', '<C-n>', '<Plug>(haritsuke-next)')
 vim.keymap.set('n', '<C-p>', '<Plug>(haritsuke-prev)')
 
 -- Replace operator
-vim.keymap.set('n', 'gr', '<Plug>(haritsuke-replace)')
-vim.keymap.set('x', 'gr', '<Plug>(haritsuke-replace)')
+vim.keymap.set({'n', 'x'}, 'gr', '<Plug>(haritsuke-replace)')
+
+-- Toggle smart indent while cycling (optional)
+vim.keymap.set('n', '<C-i>', '<Plug>(haritsuke-toggle-smart-indent)')
 ```
 
 ### How it works
@@ -89,6 +91,7 @@ vim.keymap.set('x', 'gr', '<Plug>(haritsuke-replace)')
 2. **Enhanced paste**: Use your regular paste commands with added history support
 3. **History cycling**: After pasting, press `<C-n>`/`<C-p>` to cycle through previous yanks
 4. **Replace operator**: Use `gr{motion}` to replace text with register content (e.g., `griw` to replace inner word)
+   - Smart indentation is automatically applied for line-wise replacements when enabled
 
 ### Example workflow
 
@@ -128,7 +131,8 @@ let g:haritsuke_config = {
   \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
   \ 'debug': v:false,           " Enable debug logging
   \ 'use_region_hl': v:true,    " Enable highlight during paste cycling
-  \ 'region_hl_groupname': 'HaritsukeRegion'  " Highlight group name
+  \ 'region_hl_groupname': 'HaritsukeRegion',  " Highlight group name
+  \ 'smart_indent': v:true      " Enable smart indentation adjustment
   \ }
 ```
 
@@ -142,7 +146,8 @@ vim.g.haritsuke_config = {
   register_keys = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
   debug = false,             -- Enable debug logging
   use_region_hl = true,      -- Enable highlight during paste cycling
-  region_hl_groupname = 'HaritsukeRegion'  -- Highlight group name
+  region_hl_groupname = 'HaritsukeRegion',  -- Highlight group name
+  smart_indent = true        -- Enable smart indentation adjustment
 }
 ```
 
@@ -155,6 +160,7 @@ vim.g.haritsuke_config = {
 - **debug**: Enable debug logging for troubleshooting (default: false)
 - **use_region_hl**: Show visual highlight of pasted region during cycling (default: true)
 - **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
+- **smart_indent**: Enable smart indentation adjustment for line-wise paste operations. Automatically adjusts pasted lines to match the current context (default: true)
 
 ### Highlight customization
 
@@ -165,6 +171,36 @@ highlight HaritsukeRegion guibg=#3e4452 ctermbg=238
 ```
 
 ## Advanced features
+
+### Paste without smart indent
+
+If you need to paste with original indentation preserved, you can use the special mappings:
+
+Using Vim script:
+
+```vim
+" Use <Leader>p for paste without smart indent
+nmap <Leader>p <Plug>(haritsuke-p-no-smart-indent)
+nmap <Leader>P <Plug>(haritsuke-P-no-smart-indent)
+nmap <Leader>gp <Plug>(haritsuke-gp-no-smart-indent)
+nmap <Leader>gP <Plug>(haritsuke-gP-no-smart-indent)
+xmap <Leader>p <Plug>(haritsuke-p-no-smart-indent)
+xmap <Leader>P <Plug>(haritsuke-P-no-smart-indent)
+xmap <Leader>gp <Plug>(haritsuke-gp-no-smart-indent)
+xmap <Leader>gP <Plug>(haritsuke-gP-no-smart-indent)
+```
+
+Using Neovim Lua:
+
+```lua
+-- Use <Leader>p for paste without smart indent
+vim.keymap.set({'n', 'x'}, '<Leader>p', '<Plug>(haritsuke-p-no-smart-indent)')
+vim.keymap.set({'n', 'x'}, '<Leader>P', '<Plug>(haritsuke-P-no-smart-indent)')
+vim.keymap.set({'n', 'x'}, '<Leader>gp', '<Plug>(haritsuke-gp-no-smart-indent)')
+vim.keymap.set({'n', 'x'}, '<Leader>gP', '<Plug>(haritsuke-gP-no-smart-indent)')
+```
+
+These mappings temporarily disable smart indentation for the paste operation.
 
 ### Multi-register support
 

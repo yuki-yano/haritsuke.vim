@@ -20,5 +20,6 @@ export function main(denops: Denops): void {
     doReplaceOperator: api.doReplaceOperator,
     isActive: api.isActive,
     listHistory: api.listHistory,
+    toggleSmartIndent: api.toggleSmartIndent,
   }
 }
