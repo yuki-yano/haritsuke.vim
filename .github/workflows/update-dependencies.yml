@@ -2,7 +2,7 @@ name: Update Dependencies
 
 on:
   schedule:
-    - cron: "0 0 * * 0" # Weekly on Sunday
+    - cron: "0 0 * * 6" # Weekly on Saturday
   workflow_dispatch:
 
 jobs:
@@ -18,11 +18,11 @@ jobs:
       - name: Update dependencies
         id: update
         run: |
-          # Update deps
-          find . -name "*.ts" -type f | xargs grep -l "https://deno.land\|jsr:@" | while read -r file; do
-            echo "Updating $file"
-            deno cache --reload "$file" || true
-          done
+          # Update deps using molt
+          deno run --allow-env --allow-read --allow-write --allow-net --allow-run=git,deno jsr:@molt/cli denops/haritsuke/deps/*.ts --write
+          
+          # Format updated files
+          deno fmt denops/haritsuke/deps/*.ts
           
           # Check if there are changes
           if [[ -n $(git status --porcelain) ]]; then
@@ -30,6 +30,10 @@ jobs:
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
+
+      - name: Run CI
+        if: steps.update.outputs.has_changes == 'true'
+        run: deno task ci
 
       - name: Create Pull Request
         if: steps.update.outputs.has_changes == 'true'
@@ -41,10 +45,10 @@ jobs:
           body: |
             ## Update Dependencies
             
-            This PR updates the project dependencies.
+            This PR updates the project dependencies using molt.
             
             ### Changes
-            - Updated Deno dependencies
+            - Updated Deno dependencies in `denops/haritsuke/deps/*.ts`
             
             Please review and merge if all tests pass.
           branch: update-dependencies
