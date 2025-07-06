@@ -52,6 +52,7 @@ export const createPluginState = (): PluginState => {
       debug: CONFIG_DEFAULTS.DEBUG,
       use_region_hl: CONFIG_DEFAULTS.USE_REGION_HL,
       region_hl_groupname: CONFIG_DEFAULTS.REGION_HL_GROUPNAME,
+      smart_indent: CONFIG_DEFAULTS.SMART_INDENT,
     },
     vimApi: null,
     fileSystemApi: null,

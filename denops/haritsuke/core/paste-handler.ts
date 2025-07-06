@@ -8,9 +8,11 @@ import type { Rounder } from "./rounder.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
 import type { PasteInfo, YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
+import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
 
 export type PasteConfig = {
   useRegionHl: boolean
+  smartIndent?: boolean
 }
 
 export type PasteHandler = {
@@ -85,13 +87,24 @@ export const createPasteHandler = (
         // Disable event processing during history application
         await vimApi.setGlobalVar("_haritsuke_applying_history", 1)
 
+        // Apply smart indent adjustment if enabled and line-wise paste
+        let contentToSet = entry.content
+        if (config.smartIndent && entry.regtype === "V") {
+          contentToSet = await adjustContentIndentSmart(
+            entry.content,
+            pasteInfo,
+            vimApi,
+            logger,
+          )
+        }
+
         // Set register content BEFORE undo
         const targetReg = entry.register || '"'
         logger?.log("apply", "Setting register", {
           register: targetReg,
-          contentLength: entry.content.length,
+          contentLength: contentToSet.length,
         })
-        await vimApi.setreg(targetReg, entry.content, entry.regtype)
+        await vimApi.setreg(targetReg, contentToSet, entry.regtype)
 
         // Perform single undo
         logger?.log("apply", "Executing undo")

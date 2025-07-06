@@ -35,6 +35,19 @@ nnoremap <silent> <Plug>(haritsuke-next) <Cmd>call haritsuke#cycle_next()<CR>
 nnoremap <silent> <Plug>(haritsuke-replace) <Cmd>set operatorfunc=haritsuke#replace_operator<CR>g@
 xnoremap <silent> <Plug>(haritsuke-replace) :<C-u>call haritsuke#replace_operator(visualmode(1))<CR>
 
+" Toggle smart indent
+nnoremap <silent> <Plug>(haritsuke-toggle-smart-indent) <Cmd>call haritsuke#toggle_smart_indent()<CR>
+
+" Paste without smart indent (not mapped by default)
+nnoremap <silent> <Plug>(haritsuke-p-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('p', 'n')<CR>
+nnoremap <silent> <Plug>(haritsuke-P-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('P', 'n')<CR>
+nnoremap <silent> <Plug>(haritsuke-gp-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('gp', 'n')<CR>
+nnoremap <silent> <Plug>(haritsuke-gP-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('gP', 'n')<CR>
+xnoremap <silent> <Plug>(haritsuke-p-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('p', 'v')<CR>
+xnoremap <silent> <Plug>(haritsuke-P-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('P', 'v')<CR>
+xnoremap <silent> <Plug>(haritsuke-gp-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('gp', 'v')<CR>
+xnoremap <silent> <Plug>(haritsuke-gP-no-smart-indent) <Cmd>call haritsuke#do_paste_no_smart_indent('gP', 'v')<CR>
+
 " Highlight group
 highlight default link HaritsukeRegion IncSearch
 

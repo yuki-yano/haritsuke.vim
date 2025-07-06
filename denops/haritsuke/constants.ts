@@ -72,4 +72,5 @@ export const CONFIG_DEFAULTS = {
   DEBUG: false,
   USE_REGION_HL: true,
   REGION_HL_GROUPNAME: "HaritsukeRegion",
+  SMART_INDENT: true,
 } as const

@@ -37,6 +37,8 @@ export type VimApi = {
   // Variable operations
   setGlobalVar: (name: string, value: unknown) => Promise<void>
   getGlobalVar: (name: string) => Promise<unknown>
+  getwinvar: (winnr: number, varname: string) => Promise<unknown>
+  getbufvar: (bufnr: number, varname: string) => Promise<unknown>
 }
 
 /**
@@ -99,6 +101,14 @@ export const createVimApi = (denops: Denops): VimApi => {
     getGlobalVar: async (name: string) => {
       return await vars.g.get(denops, name)
     },
+
+    getwinvar: async (winnr: number, varname: string) => {
+      return await fn.getwinvar(denops, winnr, varname)
+    },
+
+    getbufvar: async (bufnr: number, varname: string) => {
+      return await fn.getbufvar(denops, bufnr, varname)
+    },
   }
 }
 
@@ -138,6 +148,8 @@ export const createMockVimApi = (overrides: Partial<VimApi> = {}): VimApi => {
     },
     setGlobalVar: () => Promise.resolve(),
     getGlobalVar: () => Promise.resolve(undefined),
+    getwinvar: () => Promise.resolve(0),
+    getbufvar: () => Promise.resolve(""),
     ...overrides,
   }
 }

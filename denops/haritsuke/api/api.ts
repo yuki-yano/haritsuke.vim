@@ -27,6 +27,7 @@ import {
   saveUndoFile,
 } from "../core/paste-preparation.ts"
 import { executeReplaceOperator } from "../core/operator-replace.ts"
+import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
 
 // Helper to extract first argument from denops args
 const extractFirstArg = (args: unknown): unknown => {
@@ -48,6 +49,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
           debug: as.Optional(is.Boolean),
           use_region_hl: as.Optional(is.Boolean),
           region_hl_groupname: as.Optional(is.String),
+          smart_indent: as.Optional(is.Boolean),
         }),
       )
       Object.assign(state.config, configData)
@@ -114,13 +116,47 @@ export const createApi = (denops: Denops, state: PluginState) => {
       })
 
       // Only proceed with haritsuke features if initialized
-      if (!state.rounderManager || !state.cache || !state.pasteHandler) {
+      if (!state.rounderManager || !state.cache || !state.pasteHandler || !state.vimApi) {
         // Return standard paste command if haritsuke is not ready
         return generatePasteCommand(data)
       }
 
       // Sync check
       await syncIfNeeded(state)
+
+      // Apply smart indent adjustment for initial paste
+      if (state.config.smart_indent && state.vimApi) {
+        try {
+          const regContent = await state.vimApi.getreg(data.register) as string
+          const regType = await state.vimApi.getregtype(data.register) as string
+          
+          // Only adjust for line-wise yanks
+          if (regType === "V") {
+            const adjustedContent = await adjustContentIndentSmart(
+              regContent,
+              {
+                mode: data.mode as "p" | "P" | "gp" | "gP",
+                count: data.count,
+                register: data.register,
+                visualMode: data.vmode === "v",
+              },
+              state.vimApi,
+              state.logger,
+            )
+            
+            // Set adjusted content back to register
+            await state.vimApi.setreg(data.register, adjustedContent, regType)
+            
+            state.logger?.log("paste", "Applied smart indent for initial paste", {
+              originalLength: regContent.length,
+              adjustedLength: adjustedContent.length,
+            })
+          }
+        } catch (error) {
+          state.logger?.error("paste", "Smart indent adjustment failed in preparePaste", error)
+          // Continue with original content on error
+        }
+      }
 
       // Get the current buffer's rounder
       const bufnr = await fn.bufnr(denops, "%")
@@ -303,6 +339,55 @@ export const createApi = (denops: Denops, state: PluginState) => {
     }))
   }
 
+  const toggleSmartIndent = async (_args: unknown): Promise<void> => {
+    if (!state.rounderManager || !state.pasteHandler) {
+      return
+    }
+
+    try {
+      const bufnr = await fn.bufnr(denops, "%")
+      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+      
+      if (!rounder.isActive()) {
+        state.logger?.log("toggle", "No active rounder, nothing to toggle")
+        return
+      }
+
+      // Toggle the smart_indent setting
+      state.config.smart_indent = !state.config.smart_indent
+      
+      state.logger?.log("toggle", "Toggled smart indent", {
+        smart_indent: state.config.smart_indent,
+      })
+
+      // Get current entry to re-apply with new setting
+      const currentEntry = rounder.getCurrentEntry()
+      const pasteInfo = rounder.getPasteInfo()
+      const undoSeq = rounder.isFirstCycle() ? 0 : 1
+      const undoFilePath = rounder.getUndoFilePath()
+      
+      if (!currentEntry || !pasteInfo) {
+        state.logger?.error("toggle", "Missing current entry or paste info", new Error("Missing data"))
+        return
+      }
+
+      // Re-apply current entry with new indent setting
+      await state.pasteHandler.applyHistoryEntry(
+        denops,
+        currentEntry,
+        undoSeq,
+        pasteInfo,
+        undoFilePath,
+        rounder,
+      )
+      
+      state.logger?.log("toggle", "Re-applied entry with new indent setting")
+    } catch (e) {
+      state.logger?.error("toggle", "toggleSmartIndent failed", e)
+      throw e
+    }
+  }
+
   return {
     initialize,
     onTextYankPost,
@@ -315,6 +400,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
     doReplaceOperator,
     isActive,
     listHistory,
+    toggleSmartIndent,
   }
 }
 
@@ -387,6 +473,7 @@ async function initializePlugin(
       state.logger,
       {
         useRegionHl: state.config.use_region_hl ?? false,
+        smartIndent: state.config.smart_indent ?? true,
       },
       vimApi,
       {

@@ -113,6 +113,34 @@ MAPPINGS                                        *haritsuke-mappings*
     Replace operator. Use with motions to replace text with
     register content. For example, `griw` replaces inner word.
 
+                                                *<Plug>(haritsuke-toggle-smart-indent)*
+<Plug>(haritsuke-toggle-smart-indent)
+    Toggle smart indentation during active paste cycling.
+    When cycling through yank history with <C-p>/<C-n>,
+    use this mapping to toggle between adjusted and original
+    indentation. The change is applied immediately to the
+    current paste.
+
+                                                *<Plug>(haritsuke-p-no-smart-indent)*
+                                                *<Plug>(haritsuke-P-no-smart-indent)*
+                                                *<Plug>(haritsuke-gp-no-smart-indent)*
+                                                *<Plug>(haritsuke-gP-no-smart-indent)*
+<Plug>(haritsuke-p-no-smart-indent)
+<Plug>(haritsuke-P-no-smart-indent)
+<Plug>(haritsuke-gp-no-smart-indent)
+<Plug>(haritsuke-gP-no-smart-indent)
+    Same as the regular paste mappings, but temporarily disable
+    smart indentation for the paste operation. These mappings
+    are not bound by default. Use them when you need to paste
+    with the original indentation preserved.
+
+    Example mapping:
+>
+    " Use <Leader>p for paste without smart indent
+    nmap <Leader>p <Plug>(haritsuke-p-no-smart-indent)
+    nmap <Leader>P <Plug>(haritsuke-P-no-smart-indent)
+<
+
                                                 *haritsuke#is_active()*
 haritsuke#is_active()
     Returns 1 if paste cycling is currently active, 0 otherwise.
@@ -163,7 +191,8 @@ Configure haritsuke.vim by setting `g:haritsuke_config` dictionary:
       \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
       \ 'debug': v:false,
       \ 'use_region_hl': v:true,
-      \ 'region_hl_groupname': 'HaritsukeRegion'
+      \ 'region_hl_groupname': 'HaritsukeRegion',
+      \ 'smart_indent': v:true
       \ }
 <
 
@@ -196,6 +225,12 @@ use_region_hl                           *g:haritsuke_config.use_region_hl*
 region_hl_groupname                     *g:haritsuke_config.region_hl_groupname*
     Vim highlight group for paste region highlighting.
     Default: 'HaritsukeRegion'
+
+smart_indent                            *g:haritsuke_config.smart_indent*
+    Enable smart indentation adjustment for line-wise paste operations.
+    When enabled, automatically adjusts the indentation of pasted lines
+    to match the current context.
+    Default: v:true
 
 ==============================================================================
 HIGHLIGHTS                                      *haritsuke-highlights*
