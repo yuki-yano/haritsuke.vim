@@ -3,7 +3,7 @@
  * Testing event handlers
  */
 
-import { assertSpyCall, assertSpyCalls, spy, describe, it } from "../deps/test.ts"
+import { assertSpyCall, assertSpyCalls, describe, it, spy } from "../deps/test.ts"
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Denops } from "../deps/denops.ts"
