@@ -129,7 +129,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
         try {
           const regContent = await state.vimApi.getreg(data.register) as string
           const regType = await state.vimApi.getregtype(data.register) as string
-          
+
           // Only adjust for line-wise yanks
           if (regType === "V") {
             const adjustedContent = await adjustContentIndentSmart(
@@ -143,10 +143,10 @@ export const createApi = (denops: Denops, state: PluginState) => {
               state.vimApi,
               state.logger,
             )
-            
+
             // Set adjusted content back to register
             await state.vimApi.setreg(data.register, adjustedContent, regType)
-            
+
             state.logger?.log("paste", "Applied smart indent for initial paste", {
               originalLength: regContent.length,
               adjustedLength: adjustedContent.length,
@@ -347,7 +347,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
     try {
       const bufnr = await fn.bufnr(denops, "%")
       const rounder = await state.rounderManager.getRounder(denops, bufnr)
-      
+
       if (!rounder.isActive()) {
         state.logger?.log("toggle", "No active rounder, nothing to toggle")
         return
@@ -355,7 +355,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
 
       // Toggle the smart_indent setting
       state.config.smart_indent = !state.config.smart_indent
-      
+
       state.logger?.log("toggle", "Toggled smart indent", {
         smart_indent: state.config.smart_indent,
       })
@@ -365,7 +365,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
       const pasteInfo = rounder.getPasteInfo()
       const undoSeq = rounder.isFirstCycle() ? 0 : 1
       const undoFilePath = rounder.getUndoFilePath()
-      
+
       if (!currentEntry || !pasteInfo) {
         state.logger?.error("toggle", "Missing current entry or paste info", new Error("Missing data"))
         return
@@ -380,7 +380,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
         undoFilePath,
         rounder,
       )
-      
+
       state.logger?.log("toggle", "Re-applied entry with new indent setting")
     } catch (e) {
       state.logger?.error("toggle", "toggleSmartIndent failed", e)

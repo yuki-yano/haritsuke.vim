@@ -38,7 +38,7 @@ describe("api preparePaste", () => {
     it("adjusts indent for line-wise paste based on current line", async () => {
       // Track setreg calls
       const setregCalls: Array<{ register: string; content: string; regtype: string }> = []
-      
+
       const mockVimApi = createMockVimApi({
         getreg: (register: string) => {
           if (register === '"') {
@@ -59,7 +59,7 @@ describe("api preparePaste", () => {
         getline: () => Promise.resolve("  const result = "), // Current line has 2 spaces indent
         line: () => Promise.resolve(10),
       })
-      
+
       // Create mock rounder
       const mockRounder = {
         isActive: () => false,
@@ -67,11 +67,11 @@ describe("api preparePaste", () => {
         setBeforePasteCursorPos: spy(() => {}),
         setUndoFilePath: spy(() => {}),
       }
-      
+
       const mockRounderManager = {
         getRounder: () => Promise.resolve(mockRounder),
       }
-      
+
       const state = createMockPluginState({
         config: {
           persist_path: "/tmp",
@@ -84,16 +84,16 @@ describe("api preparePaste", () => {
           smart_indent: true, // Enable smart indent
         },
         vimApi: mockVimApi,
-        rounderManager: mockRounderManager as any,
+        rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
         cache: {
           getAll: () => [],
-        } as any,
-        pasteHandler: {} as any,
+        } as unknown as PluginState["cache"],
+        pasteHandler: {} as unknown as PluginState["pasteHandler"],
       })
-      
+
       const denops = createMockDenops()
       const api = createApi(denops, state)
-      
+
       // Execute preparePaste
       const result = await api.preparePaste({
         mode: "p",
@@ -101,20 +101,20 @@ describe("api preparePaste", () => {
         count: 1,
         register: '"',
       })
-      
+
       // Verify paste command is returned
       assertEquals(result, 'normal! ""1p')
-      
+
       // Verify that setreg was called with adjusted content
       assertEquals(setregCalls.length, 1)
       assertEquals(setregCalls[0].register, '"')
       assertEquals(setregCalls[0].content, "  function test() {\n    return 42;\n  }")
       assertEquals(setregCalls[0].regtype, "V")
     })
-    
+
     it("skips adjustment for character-wise paste", async () => {
       const setregCalls: Array<{ register: string; content: string; regtype: string }> = []
-      
+
       const mockVimApi = createMockVimApi({
         getreg: (register: string) => {
           if (register === '"') {
@@ -133,18 +133,18 @@ describe("api preparePaste", () => {
           return Promise.resolve()
         }),
       })
-      
+
       const mockRounder = {
         isActive: () => false,
         start: spy(() => Promise.resolve()),
         setBeforePasteCursorPos: spy(() => {}),
         setUndoFilePath: spy(() => {}),
       }
-      
+
       const mockRounderManager = {
         getRounder: () => Promise.resolve(mockRounder),
       }
-      
+
       const state = createMockPluginState({
         config: {
           persist_path: "/tmp",
@@ -157,30 +157,30 @@ describe("api preparePaste", () => {
           smart_indent: true, // Enable smart indent
         },
         vimApi: mockVimApi,
-        rounderManager: mockRounderManager as any,
+        rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
         cache: {
           getAll: () => [],
-        } as any,
-        pasteHandler: {} as any,
+        } as unknown as PluginState["cache"],
+        pasteHandler: {} as unknown as PluginState["pasteHandler"],
       })
-      
+
       const denops = createMockDenops()
       const api = createApi(denops, state)
-      
+
       await api.preparePaste({
         mode: "p",
         vmode: "n",
         count: 1,
         register: '"',
       })
-      
+
       // Verify that setreg was NOT called (no adjustment for character-wise)
       assertEquals(setregCalls.length, 0)
     })
-    
+
     it("skips adjustment when smart_indent is disabled", async () => {
       const setregCalls: Array<{ register: string; content: string; regtype: string }> = []
-      
+
       const mockVimApi = createMockVimApi({
         getreg: (register: string) => {
           if (register === '"') {
@@ -199,18 +199,18 @@ describe("api preparePaste", () => {
           return Promise.resolve()
         }),
       })
-      
+
       const mockRounder = {
         isActive: () => false,
         start: spy(() => Promise.resolve()),
         setBeforePasteCursorPos: spy(() => {}),
         setUndoFilePath: spy(() => {}),
       }
-      
+
       const mockRounderManager = {
         getRounder: () => Promise.resolve(mockRounder),
       }
-      
+
       const state = createMockPluginState({
         config: {
           persist_path: "/tmp",
@@ -223,43 +223,43 @@ describe("api preparePaste", () => {
           smart_indent: false, // Disable smart indent
         },
         vimApi: mockVimApi,
-        rounderManager: mockRounderManager as any,
+        rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
         cache: {
           getAll: () => [],
-        } as any,
-        pasteHandler: {} as any,
+        } as unknown as PluginState["cache"],
+        pasteHandler: {} as unknown as PluginState["pasteHandler"],
       })
-      
+
       const denops = createMockDenops()
       const api = createApi(denops, state)
-      
+
       await api.preparePaste({
         mode: "p",
         vmode: "n",
         count: 1,
         register: '"',
       })
-      
+
       // Verify that setreg was NOT called (no adjustment when disabled)
       assertEquals(setregCalls.length, 0)
     })
-    
+
     it("handles errors gracefully and continues with original content", async () => {
       const mockVimApi = createMockVimApi({
         getreg: () => Promise.reject(new Error("Test error")),
       })
-      
+
       const mockRounder = {
         isActive: () => false,
         start: spy(() => Promise.resolve()),
         setBeforePasteCursorPos: spy(() => {}),
         setUndoFilePath: spy(() => {}),
       }
-      
+
       const mockRounderManager = {
         getRounder: () => Promise.resolve(mockRounder),
       }
-      
+
       const state = createMockPluginState({
         config: {
           persist_path: "/tmp",
@@ -272,16 +272,16 @@ describe("api preparePaste", () => {
           smart_indent: true,
         },
         vimApi: mockVimApi,
-        rounderManager: mockRounderManager as any,
+        rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
         cache: {
           getAll: () => [],
-        } as any,
-        pasteHandler: {} as any,
+        } as unknown as PluginState["cache"],
+        pasteHandler: {} as unknown as PluginState["pasteHandler"],
       })
-      
+
       const denops = createMockDenops()
       const api = createApi(denops, state)
-      
+
       // Should not throw error
       const result = await api.preparePaste({
         mode: "p",
@@ -289,7 +289,7 @@ describe("api preparePaste", () => {
         count: 1,
         register: '"',
       })
-      
+
       // Verify paste command is returned
       assertEquals(result, 'normal! ""1p')
     })
