@@ -5,6 +5,7 @@
 import type { Denops } from "../deps/denops.ts"
 import { fn } from "../deps/denops.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
+import { withErrorHandling } from "../utils/error-handling.ts"
 
 export type HighlightConfig = {
   regionHlGroupname?: string
@@ -28,7 +29,7 @@ export const createHighlightManager = (
 
   return {
     apply: async (denops: Denops, register: string): Promise<void> => {
-      try {
+      await withErrorHandling(async () => {
         // Get current buffer number
         const bufnr = await fn.bufnr(denops, "%")
 
@@ -67,16 +68,14 @@ export const createHighlightManager = (
         // Clear previous highlight for this buffer
         const existingMatchId = highlightMatchIds.get(bufnr)
         if (existingMatchId && existingMatchId > 0) {
-          try {
-            await fn.matchdelete(denops, existingMatchId)
-          } catch (e) {
-            // Ignore error if match doesn't exist (e.g., E803: ID not found)
-            logger?.log("highlight", "Match already deleted or not found", {
-              bufnr,
-              matchId: existingMatchId,
-              error: e instanceof Error ? e.message : String(e),
-            })
-          }
+          await withErrorHandling(
+            async () => {
+              await fn.matchdelete(denops, existingMatchId)
+            },
+            "highlight matchdelete",
+            logger,
+            undefined, // Continue on error
+          )
           highlightMatchIds.delete(bufnr)
         }
 
@@ -93,25 +92,29 @@ export const createHighlightManager = (
           pattern,
           matchId,
         })
-      } catch (e) {
-        logger?.error("highlight", "Failed to apply highlight", e)
-      }
+      }, "highlight apply", logger)
     },
 
     clear: async (denops: Denops): Promise<void> => {
-      const bufnr = await fn.bufnr(denops, "%")
-      const matchId = highlightMatchIds.get(bufnr)
+      await withErrorHandling(
+        async () => {
+          const bufnr = await fn.bufnr(denops, "%")
+          const matchId = highlightMatchIds.get(bufnr)
 
-      if (matchId && matchId > 0) {
-        try {
-          await fn.matchdelete(denops, matchId)
-          highlightMatchIds.delete(bufnr)
-          logger?.log("highlight", "Highlight cleared", { bufnr, matchId })
-        } catch (_error) {
-          // Ignore error if match doesn't exist
-          highlightMatchIds.delete(bufnr)
-        }
-      }
+          if (matchId && matchId > 0) {
+            try {
+              await fn.matchdelete(denops, matchId)
+              highlightMatchIds.delete(bufnr)
+              logger?.log("highlight", "Highlight cleared", { bufnr, matchId })
+            } catch (_error) {
+              // Ignore error if match doesn't exist
+              highlightMatchIds.delete(bufnr)
+            }
+          }
+        },
+        "highlight clear",
+        logger,
+      )
     },
 
     isActive: (): boolean => {

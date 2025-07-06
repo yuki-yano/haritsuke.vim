@@ -28,6 +28,7 @@ import {
 } from "../core/paste-preparation.ts"
 import { executeReplaceOperator } from "../core/operator-replace.ts"
 import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
+import { withErrorHandling } from "../utils/error-handling.ts"
 
 // Helper to extract first argument from denops args
 const extractFirstArg = (args: unknown): unknown => {
@@ -82,143 +83,147 @@ export const createApi = (denops: Denops, state: PluginState) => {
   let preparedPasteInfo: PreparedPasteInfo | null = null
 
   const preparePaste = async (args: unknown): Promise<string> => {
-    try {
-      const data = extractFirstArg(args)
+    return await withErrorHandling(
+      async () => {
+        const data = extractFirstArg(args)
 
-      assert(
-        data,
-        is.ObjectOf({
-          mode: is.String,
-          vmode: is.String,
-          count: is.Number,
-          register: is.String,
-        }),
-      )
+        assert(
+          data,
+          is.ObjectOf({
+            mode: is.String,
+            vmode: is.String,
+            count: is.Number,
+            register: is.String,
+          }),
+        )
 
-      state.logger?.log("paste", "preparePaste called", data)
+        state.logger?.log("paste", "preparePaste called", data)
 
-      // Debug: check current buffer state
-      const currentLine = await fn.line(denops, ".")
-      const totalLines = await fn.line(denops, "$")
-      const lineContent = await fn.getline(denops, ".")
+        // Debug: check current buffer state
+        const currentLine = await fn.line(denops, ".")
+        const totalLines = await fn.line(denops, "$")
+        const lineContent = await fn.getline(denops, ".")
 
-      // Check if operator-replace might be active
-      const visualMarks = {
-        start: await fn.getpos(denops, "'["),
-        end: await fn.getpos(denops, "']"),
-      }
-
-      state.logger?.log("paste", "Buffer state at preparePaste", {
-        currentLine,
-        totalLines,
-        lineContent,
-        visualMarks,
-      })
-
-      // Only proceed with haritsuke features if initialized
-      if (!state.rounderManager || !state.cache || !state.pasteHandler || !state.vimApi) {
-        // Return standard paste command if haritsuke is not ready
-        return generatePasteCommand(data)
-      }
-
-      // Sync check
-      await syncIfNeeded(state)
-
-      // Apply smart indent adjustment for initial paste
-      if (state.config.smart_indent && state.vimApi) {
-        try {
-          const regContent = await state.vimApi.getreg(data.register) as string
-          const regType = await state.vimApi.getregtype(data.register) as string
-
-          // Only adjust for line-wise yanks
-          if (regType === "V") {
-            const adjustedContent = await adjustContentIndentSmart(
-              regContent,
-              {
-                mode: data.mode as "p" | "P" | "gp" | "gP",
-                count: data.count,
-                register: data.register,
-                visualMode: data.vmode === "v",
-              },
-              state.vimApi,
-              state.logger,
-            )
-
-            // Set adjusted content back to register
-            await state.vimApi.setreg(data.register, adjustedContent, regType)
-
-            state.logger?.log("paste", "Applied smart indent for initial paste", {
-              originalLength: regContent.length,
-              adjustedLength: adjustedContent.length,
-            })
-          }
-        } catch (error) {
-          state.logger?.error("paste", "Smart indent adjustment failed in preparePaste", error)
-          // Continue with original content on error
+        // Check if operator-replace might be active
+        const visualMarks = {
+          start: await fn.getpos(denops, "'["),
+          end: await fn.getpos(denops, "']"),
         }
-      }
 
-      // Get the current buffer's rounder
-      const bufnr = await fn.bufnr(denops, "%")
-      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+        state.logger?.log("paste", "Buffer state at preparePaste", {
+          currentLine,
+          totalLines,
+          lineContent,
+          visualMarks,
+        })
 
-      // Initialize rounder for paste
-      await initializeRounderForPaste(denops, rounder, state, data, {
-        clearHighlight,
-      })
+        // Only proceed with haritsuke features if initialized
+        if (!state.rounderManager || !state.cache || !state.pasteHandler || !state.vimApi) {
+          // Return standard paste command if haritsuke is not ready
+          return generatePasteCommand(data)
+        }
 
-      // Save undo file BEFORE paste
-      const undoFilePath = await saveUndoFile(denops, state.logger)
-      if (undoFilePath) {
-        rounder.setUndoFilePath(undoFilePath)
-      }
+        // Sync check
+        await syncIfNeeded(state)
 
-      // Store prepared paste info
-      preparedPasteInfo = { ...data, undoFilePath }
+        // Apply smart indent adjustment for initial paste
+        if (state.config.smart_indent && state.vimApi) {
+          await withErrorHandling(
+            async () => {
+              const regContent = await state.vimApi!.getreg(data.register) as string
+              const regType = await state.vimApi!.getregtype(data.register) as string
 
-      // Return paste command to be executed by Vim
-      const pasteCmd = generatePasteCommand(data)
+              // Only adjust for line-wise yanks
+              if (regType === "V") {
+                const adjustedContent = await adjustContentIndentSmart(
+                  regContent,
+                  {
+                    mode: data.mode as "p" | "P" | "gp" | "gP",
+                    count: data.count,
+                    register: data.register,
+                    visualMode: data.vmode === "v",
+                  },
+                  state.vimApi!,
+                  state.logger,
+                )
 
-      state.logger?.log("paste", "preparePaste returning command", {
-        command: pasteCmd,
-      })
-      return pasteCmd
-    } catch (e) {
-      state.logger?.error("paste", "preparePaste failed", e)
-      throw e
-    }
+                // Set adjusted content back to register
+                await state.vimApi!.setreg(data.register, adjustedContent, regType)
+
+                state.logger?.log("paste", "Applied smart indent for initial paste", {
+                  originalLength: regContent.length,
+                  adjustedLength: adjustedContent.length,
+                })
+              }
+            },
+            "api smart indent adjustment",
+            state.logger,
+          )
+        }
+
+        // Get the current buffer's rounder
+        const bufnr = await fn.bufnr(denops, "%")
+        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
+
+        // Initialize rounder for paste
+        await initializeRounderForPaste(denops, rounder, state, data, {
+          clearHighlight,
+        })
+
+        // Save undo file BEFORE paste
+        const undoFilePath = await saveUndoFile(denops, state.logger)
+        if (undoFilePath) {
+          rounder.setUndoFilePath(undoFilePath)
+        }
+
+        // Store prepared paste info
+        preparedPasteInfo = { ...data, undoFilePath }
+
+        // Return paste command to be executed by Vim
+        const pasteCmd = generatePasteCommand(data)
+
+        state.logger?.log("paste", "preparePaste returning command", {
+          command: pasteCmd,
+        })
+        return pasteCmd
+      },
+      "api preparePaste",
+      state.logger,
+      'normal! ""1p', // Default fallback paste command
+    )
   }
 
   const onPasteExecuted = async (_args: unknown): Promise<void> => {
-    try {
-      state.logger?.log("paste", "onPasteExecuted called")
+    await withErrorHandling(
+      async () => {
+        state.logger?.log("paste", "onPasteExecuted called")
 
-      if (!state.rounderManager || !preparedPasteInfo) {
-        return
-      }
+        if (!state.rounderManager || !preparedPasteInfo) {
+          return
+        }
 
-      const bufnr = await fn.bufnr(denops, "%")
-      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+        const bufnr = await fn.bufnr(denops, "%")
+        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
 
-      if (!rounder.isActive()) {
-        return
-      }
+        if (!rounder.isActive()) {
+          return
+        }
 
-      // Process paste completion
-      await processPasteCompletion(denops, rounder, preparedPasteInfo, state, {
-        applyHighlight,
-      })
+        // Process paste completion
+        await processPasteCompletion(denops, rounder, preparedPasteInfo, state, {
+          applyHighlight,
+        })
 
-      state.logger?.log("paste", "Paste executed", {
-        data: preparedPasteInfo,
-      })
+        state.logger?.log("paste", "Paste executed", {
+          data: preparedPasteInfo,
+        })
 
-      // Clear prepared paste info
-      preparedPasteInfo = null
-    } catch (e) {
-      state.logger?.error("paste", "onPasteExecuted failed", e)
-      throw e
-    }
+        // Clear prepared paste info
+        preparedPasteInfo = null
+      },
+      "api onPasteExecuted",
+      state.logger,
+    )
   }
 
   const cyclePrev = async (args: unknown): Promise<void> => {
@@ -319,13 +324,16 @@ export const createApi = (denops: Denops, state: PluginState) => {
       return false
     }
 
-    try {
-      const bufnr = await fn.bufnr(denops, "%")
-      const rounder = await state.rounderManager.getRounder(denops, bufnr)
-      return rounder.isActive()
-    } catch {
-      return false
-    }
+    return await withErrorHandling(
+      async () => {
+        const bufnr = await fn.bufnr(denops, "%")
+        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
+        return rounder.isActive()
+      },
+      "api isActive",
+      state.logger,
+      false, // Return false on error
+    )
   }
 
   const listHistory = (_args: unknown): Array<{ type: "v" | "V" | "b"; content: string }> => {
@@ -345,48 +353,49 @@ export const createApi = (denops: Denops, state: PluginState) => {
       return
     }
 
-    try {
-      const bufnr = await fn.bufnr(denops, "%")
-      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+    await withErrorHandling(
+      async () => {
+        const bufnr = await fn.bufnr(denops, "%")
+        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
 
-      if (!rounder.isActive()) {
-        state.logger?.log("toggle", "No active rounder, nothing to toggle")
-        return
-      }
+        if (!rounder.isActive()) {
+          state.logger?.log("toggle", "No active rounder, nothing to toggle")
+          return
+        }
 
-      // Toggle the smart_indent setting
-      state.config.smart_indent = !state.config.smart_indent
+        // Toggle the smart_indent setting
+        state.config.smart_indent = !state.config.smart_indent
 
-      state.logger?.log("toggle", "Toggled smart indent", {
-        smart_indent: state.config.smart_indent,
-      })
+        state.logger?.log("toggle", "Toggled smart indent", {
+          smart_indent: state.config.smart_indent,
+        })
 
-      // Get current entry to re-apply with new setting
-      const currentEntry = rounder.getCurrentEntry()
-      const pasteInfo = rounder.getPasteInfo()
-      const undoSeq = rounder.isFirstCycle() ? 0 : 1
-      const undoFilePath = rounder.getUndoFilePath()
+        // Get current entry to re-apply with new setting
+        const currentEntry = rounder.getCurrentEntry()
+        const pasteInfo = rounder.getPasteInfo()
+        const undoSeq = rounder.isFirstCycle() ? 0 : 1
+        const undoFilePath = rounder.getUndoFilePath()
 
-      if (!currentEntry || !pasteInfo) {
-        state.logger?.error("toggle", "Missing current entry or paste info", new Error("Missing data"))
-        return
-      }
+        if (!currentEntry || !pasteInfo) {
+          state.logger?.error("toggle", "Missing current entry or paste info", new Error("Missing data"))
+          return
+        }
 
-      // Re-apply current entry with new indent setting
-      await state.pasteHandler.applyHistoryEntry(
-        denops,
-        currentEntry,
-        undoSeq,
-        pasteInfo,
-        undoFilePath,
-        rounder,
-      )
+        // Re-apply current entry with new indent setting
+        await state.pasteHandler!.applyHistoryEntry(
+          denops,
+          currentEntry,
+          undoSeq,
+          pasteInfo,
+          undoFilePath,
+          rounder,
+        )
 
-      state.logger?.log("toggle", "Re-applied entry with new indent setting")
-    } catch (e) {
-      state.logger?.error("toggle", "toggleSmartIndent failed", e)
-      throw e
-    }
+        state.logger?.log("toggle", "Re-applied entry with new indent setting")
+      },
+      "api toggleSmartIndent",
+      state.logger,
+    )
   }
 
   return {

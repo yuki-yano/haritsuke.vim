@@ -5,6 +5,8 @@ import { ensureDir } from "../deps/std.ts"
 import type { RegisterType, YankEntry } from "../types.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
 import { DATABASE, SQLITE_PRAGMA } from "../constants.ts"
+import { calculateContentSize, validateContentSize } from "../utils/validation.ts"
+import { withErrorHandling, withErrorHandlingSync } from "../utils/error-handling.ts"
 
 /**
  * Type definition for row data returned from SQLite
@@ -46,6 +48,7 @@ export type YankDatabase = {
   init: () => Promise<void>
   add: (entry: Omit<YankEntry, "id" | "size">) => Promise<YankEntry>
   getRecent: (limit?: number) => YankEntry[]
+  clear: () => Promise<void>
   getSyncStatus: () => SyncStatus
   close: () => void
 }
@@ -159,11 +162,11 @@ export const createYankDatabase = (
    * - Delete old entries exceeding maximum history count
    */
   const cleanup = (): void => {
-    try {
-      statements.deleteOld!.run(maxHistory)
-    } catch (error) {
-      logger?.error("database", "Failed to cleanup database", error)
-    }
+    withErrorHandlingSync(
+      () => statements.deleteOld!.run(maxHistory),
+      "database cleanup",
+      logger,
+    )
   }
 
   /**
@@ -266,10 +269,10 @@ export const createYankDatabase = (
    */
   const add = (entry: Omit<YankEntry, "id" | "size">): Promise<YankEntry> => {
     return Promise.resolve().then(() => {
-      const size = new TextEncoder().encode(entry.content).length
+      const size = calculateContentSize(entry.content)
 
       // Size limit check
-      if (size > DATABASE.MAX_CONTENT_SIZE) {
+      if (!validateContentSize(entry.content)) {
         throw new Error(`Content too large: ${size} bytes (max: ${DATABASE.MAX_CONTENT_SIZE})`)
       }
 
@@ -305,13 +308,15 @@ export const createYankDatabase = (
    * Get latest history
    */
   const getRecent = (limit: number = 100): YankEntry[] => {
-    try {
-      const rows = statements.selectRecent!.all(Math.min(limit, maxHistory))
-      return rows.map((row) => rowToEntry(row as YankHistoryRow))
-    } catch (error) {
-      logger?.error("database", "Failed to get recent entries", error)
-      return []
-    }
+    return withErrorHandlingSync(
+      () => {
+        const rows = statements.selectRecent!.all(Math.min(limit, maxHistory))
+        return rows.map((row) => rowToEntry(row as YankHistoryRow))
+      },
+      "database getRecent",
+      logger,
+      [],
+    )
   }
 
   /**
@@ -327,25 +332,45 @@ export const createYankDatabase = (
       }
     }
 
-    try {
-      const result = db.prepare(`
-        SELECT 
-          MAX(timestamp) as last_timestamp,
-          COUNT(*) as entry_count
-        FROM yank_history
-      `).get() as { last_timestamp: number | null; entry_count: number }
+    return withErrorHandlingSync(
+      () => {
+        const result = db!.prepare(`
+          SELECT 
+            MAX(timestamp) as last_timestamp,
+            COUNT(*) as entry_count
+          FROM yank_history
+        `).get() as { last_timestamp: number | null; entry_count: number }
 
-      return {
-        lastTimestamp: result.last_timestamp || 0,
-        entryCount: result.entry_count,
-      }
-    } catch (error) {
-      logger?.error("database", "Failed to get sync status", error)
-      return {
+        return {
+          lastTimestamp: result.last_timestamp || 0,
+          entryCount: result.entry_count,
+        }
+      },
+      "database getSyncStatus",
+      logger,
+      {
         lastTimestamp: 0,
         entryCount: 0,
-      }
-    }
+      },
+    )
+  }
+
+  /**
+   * Clear all entries from database
+   */
+  const clear = (): Promise<void> => {
+    return withErrorHandling(
+      async () => {
+        if (!db) {
+          throw new Error("Database not initialized")
+        }
+
+        db.exec("DELETE FROM yank_history")
+        logger?.log("database", "Cleared all entries from database")
+      },
+      "database clear",
+      logger,
+    )
   }
 
   /**
@@ -371,6 +396,7 @@ export const createYankDatabase = (
     init,
     add,
     getRecent,
+    clear,
     getSyncStatus,
     close,
   }

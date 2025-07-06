@@ -1,6 +1,7 @@
 import type { VimApi } from "../vim/vim-api.ts"
 import type { DebugLogger } from "./debug-logger.ts"
 import type { PasteInfo } from "../types.ts"
+import { withErrorHandling } from "./error-handling.ts"
 
 /**
  * Detect the minimum common indent from lines
@@ -76,68 +77,69 @@ export async function adjustContentIndentSmart(
   content: string,
   pasteInfo: PasteInfo,
   vimApi: VimApi,
-  logger?: DebugLogger | null,
+  logger: DebugLogger | null = null,
 ): Promise<string> {
-  try {
-    logger?.log("indent", "Starting smart indent adjustment", {
-      contentLength: content.length,
-      mode: pasteInfo.mode,
-    })
+  return await withErrorHandling(
+    async () => {
+      logger?.log("indent", "Starting smart indent adjustment", {
+        contentLength: content.length,
+        mode: pasteInfo.mode,
+      })
 
-    // Get the current line for indent reference
-    const currentLine = await vimApi.getline(".")
+      // Get the current line for indent reference
+      const currentLine = await vimApi.getline(".")
 
-    // Detect base indent from current line
-    const baseIndentMatch = currentLine.match(/^(\s*)/)
-    const baseIndent = baseIndentMatch ? baseIndentMatch[1] : ""
+      // Detect base indent from current line
+      const baseIndentMatch = currentLine.match(/^(\s*)/)
+      const baseIndent = baseIndentMatch ? baseIndentMatch[1] : ""
 
-    // If no indent on current line and pasting after (p), calculate expected indent
-    if (baseIndent === "" && pasteInfo.mode === "p") {
-      const nextLineNum = (await vimApi.line(".")) + 1
-      const shiftWidth = await vimApi.getwinvar(0, "&shiftwidth") as number
-      const expandTab = await vimApi.getwinvar(0, "&expandtab") as number
+      // If no indent on current line and pasting after (p), calculate expected indent
+      if (baseIndent === "" && pasteInfo.mode === "p") {
+        const nextLineNum = (await vimApi.line(".")) + 1
+        const shiftWidth = await vimApi.getwinvar(0, "&shiftwidth") as number
+        const expandTab = await vimApi.getwinvar(0, "&expandtab") as number
 
-      // Calculate expected indent level using Vim's indent expression
-      const indentExpr = await vimApi.getbufvar(0, "&indentexpr") as string
-      let indentCount = 0
+        // Calculate expected indent level using Vim's indent expression
+        const indentExpr = await vimApi.getbufvar(0, "&indentexpr") as string
+        let indentCount = 0
 
-      if (indentExpr && shiftWidth > 0) {
-        // Calculate indent for the next line position without buffer modification
-        const indentWidth = await vimApi.eval(`cindent(${nextLineNum})`) as number
-        indentCount = Math.floor(indentWidth / shiftWidth)
+        if (indentExpr && shiftWidth > 0) {
+          // Calculate indent for the next line position without buffer modification
+          const indentWidth = await vimApi.eval(`cindent(${nextLineNum})`) as number
+          indentCount = Math.floor(indentWidth / shiftWidth)
+        }
+
+        const newBaseIndent = getIndentText(indentCount, shiftWidth, expandTab === 0)
+
+        // Adjust the content
+        const lines = content.split("\n")
+        const adjustedLines = adjustIndent(lines, newBaseIndent)
+        const adjustedContent = adjustedLines.join("\n")
+
+        logger?.log("indent", "Adjusted with calculated indent", {
+          originalLength: content.length,
+          adjustedLength: adjustedContent.length,
+          baseIndent: newBaseIndent,
+        })
+
+        return adjustedContent
+      } else {
+        // Adjust based on current line indent
+        const lines = content.split("\n")
+        const adjustedLines = adjustIndent(lines, baseIndent)
+        const adjustedContent = adjustedLines.join("\n")
+
+        logger?.log("indent", "Adjusted with current line indent", {
+          originalLength: content.length,
+          adjustedLength: adjustedContent.length,
+          baseIndent,
+        })
+
+        return adjustedContent
       }
-
-      const newBaseIndent = getIndentText(indentCount, shiftWidth, expandTab === 0)
-
-      // Adjust the content
-      const lines = content.split("\n")
-      const adjustedLines = adjustIndent(lines, newBaseIndent)
-      const adjustedContent = adjustedLines.join("\n")
-
-      logger?.log("indent", "Adjusted with calculated indent", {
-        originalLength: content.length,
-        adjustedLength: adjustedContent.length,
-        baseIndent: newBaseIndent,
-      })
-
-      return adjustedContent
-    } else {
-      // Adjust based on current line indent
-      const lines = content.split("\n")
-      const adjustedLines = adjustIndent(lines, baseIndent)
-      const adjustedContent = adjustedLines.join("\n")
-
-      logger?.log("indent", "Adjusted with current line indent", {
-        originalLength: content.length,
-        adjustedLength: adjustedContent.length,
-        baseIndent,
-      })
-
-      return adjustedContent
-    }
-  } catch (error) {
-    logger?.error("indent", "Smart indent adjustment failed", error)
-    // Return original content on error
-    return content
-  }
+    },
+    "indent adjustContentIndentSmart",
+    logger,
+    content, // Return original content on error
+  )
 }

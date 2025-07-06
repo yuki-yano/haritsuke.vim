@@ -3,7 +3,7 @@
  * Testing highlight management functionality
  */
 
-import { assertEquals, describe, it, spy } from "../deps/test.ts"
+import { assertEquals, assertRejects, describe, it, spy } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { createHighlightManager } from "../vim/highlight.ts"
 
@@ -224,11 +224,15 @@ describe("createHighlightManager", () => {
     const mockDenops = createMockDenops(mockFns)
     const manager = createHighlightManager({}, mockLogger)
 
-    // Should not throw
-    await manager.apply(mockDenops, '"')
+    // Should throw the error after logging
+    await assertRejects(
+      async () => await manager.apply(mockDenops, '"'),
+      Error,
+      "Test error",
+    )
 
-    // Should log error
+    // Should log error before throwing
     assertEquals(mockLogger.error.calls.length, 1)
-    assertEquals(mockLogger.error.calls[0].args[1], "Failed to apply highlight")
+    assertEquals(mockLogger.error.calls[0].args[1], "Operation failed")
   })
 })

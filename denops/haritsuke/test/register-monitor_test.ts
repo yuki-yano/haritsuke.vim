@@ -40,6 +40,10 @@ const createMockDatabase = () => {
     },
     getRecent: () => entries,
     getSyncStatus: () => ({ lastTimestamp: Date.now(), entryCount: entries.length }),
+    clear: () => {
+      entries.length = 0
+      return Promise.resolve()
+    },
     close: () => {},
   }
 }
