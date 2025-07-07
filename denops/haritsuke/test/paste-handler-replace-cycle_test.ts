@@ -18,7 +18,7 @@ const createMockCallbacks = (): PasteHandlerCallbacks => ({
 })
 
 // Helper to create test entries
-const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
+const _createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
   id,
   content,
   regtype: "v",
@@ -30,7 +30,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     it("handles replace operation with singleUndo during cycle", async () => {
       const callbacks = createMockCallbacks()
       const commands: string[] = []
-      
+
       // Mock VimApi to track commands
       const mockVimApi = createMockVimApi({
         cmd: spy((cmd: string) => {
@@ -75,7 +75,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
           end: [0, 32, 16, 0],
         },
       })
-      
+
       // Start rounder to make it active
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
@@ -92,27 +92,27 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       // Verify commands executed
       // 1. Flag set
       assertSpyCall(mockVimApi.setGlobalVar as ReturnType<typeof spy>, 0, ["_haritsuke_applying_history", 1])
-      
+
       // 2. Register set with content
       assertSpyCall(mockVimApi.setreg as ReturnType<typeof spy>, 0, ['"', "type", "v"])
-      
+
       // 3. Undo executed
-      assertEquals(commands.filter(cmd => cmd === "silent! undo").length, 1, "Should execute undo once")
-      
+      assertEquals(commands.filter((cmd) => cmd === "silent! undo").length, 1, "Should execute undo once")
+
       // 4. Re-delete with proper visual mode and range
-      const deleteCommands = commands.filter(cmd => cmd.includes('"_d'))
+      const deleteCommands = commands.filter((cmd) => cmd.includes('"_d'))
       assertEquals(deleteCommands.length, 1, "Should execute delete once")
       assertEquals(
         deleteCommands[0],
         'silent! normal! 32G13|v32G16|"_d',
-        "Should delete the correct range with char-wise visual mode"
+        "Should delete the correct range with char-wise visual mode",
       )
-      
+
       // 5. Paste executed
-      const pasteCommands = commands.filter(cmd => cmd.includes('""P'))
+      const pasteCommands = commands.filter((cmd) => cmd.includes('""P'))
       assertEquals(pasteCommands.length, 1, "Should execute paste once")
       assertEquals(pasteCommands[0], 'silent! normal! 1""P', "Should paste with P command")
-      
+
       // 6. Flag cleared
       assertSpyCall(mockVimApi.setGlobalVar as ReturnType<typeof spy>, 1, ["_haritsuke_applying_history", 0])
     })
@@ -120,7 +120,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     it("handles line-wise replace operation correctly", async () => {
       const callbacks = createMockCallbacks()
       const commands: string[] = []
-      
+
       const mockVimApi = createMockVimApi({
         cmd: spy((cmd: string) => {
           commands.push(cmd)
@@ -164,7 +164,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
           end: [0, 12, 20, 0],
         },
       })
-      
+
       await rounder.start([entry], { mode: "p", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
@@ -177,19 +177,19 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       )
 
       // Verify line-wise delete (no column positions)
-      const deleteCommands = commands.filter(cmd => cmd.includes('"_d'))
+      const deleteCommands = commands.filter((cmd) => cmd.includes('"_d'))
       assertEquals(deleteCommands.length, 1, "Should execute delete once")
       assertEquals(
         deleteCommands[0],
         'silent! normal! 10GV12G"_d',
-        "Should delete lines without column positions"
+        "Should delete lines without column positions",
       )
     })
 
     it("handles block-wise replace operation correctly", async () => {
       const callbacks = createMockCallbacks()
       const commands: string[] = []
-      
+
       const mockVimApi = createMockVimApi({
         cmd: spy((cmd: string) => {
           commands.push(cmd)
@@ -218,7 +218,8 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       const entry: YankEntry = {
         id: "4",
         content: "AAA\nBBB\nCCC",
-        regtype: "\x163", // Block-wise with width 3
+        regtype: "b", // Block-wise
+        blockwidth: 3,
         timestamp: 400,
       }
 
@@ -233,7 +234,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
           end: [0, 7, 15, 0],
         },
       })
-      
+
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
@@ -246,19 +247,19 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       )
 
       // Verify block-wise delete (Ctrl-V)
-      const deleteCommands = commands.filter(cmd => cmd.includes('"_d'))
+      const deleteCommands = commands.filter((cmd) => cmd.includes('"_d'))
       assertEquals(deleteCommands.length, 1, "Should execute delete once")
       assertEquals(
         deleteCommands[0],
         'silent! normal! 5G10|\x167G15|"_d',
-        "Should delete block with Ctrl-V visual mode"
+        "Should delete block with Ctrl-V visual mode",
       )
     })
 
     it("handles normal cycle without replace info", async () => {
       const callbacks = createMockCallbacks()
       const commands: string[] = []
-      
+
       const mockVimApi = createMockVimApi({
         cmd: spy((cmd: string) => {
           commands.push(cmd)
@@ -301,23 +302,23 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       )
 
       // Verify normal behavior (undo + rundo)
-      assertEquals(commands.filter(cmd => cmd === "silent! undo").length, 1, "Should execute undo")
+      assertEquals(commands.filter((cmd) => cmd === "silent! undo").length, 1, "Should execute undo")
       assertEquals(
-        commands.filter(cmd => cmd.includes("rundo")).length,
+        commands.filter((cmd) => cmd.includes("rundo")).length,
         1,
-        "Should restore undo file for normal cycle"
+        "Should restore undo file for normal cycle",
       )
       assertEquals(
-        commands.filter(cmd => cmd.includes('"_d')).length,
+        commands.filter((cmd) => cmd.includes('"_d')).length,
         0,
-        "Should NOT execute delete for normal cycle"
+        "Should NOT execute delete for normal cycle",
       )
     })
 
     it("handles replace with singleUndo disabled", async () => {
       const callbacks = createMockCallbacks()
       const commands: string[] = []
-      
+
       const mockVimApi = createMockVimApi({
         cmd: spy((cmd: string) => {
           commands.push(cmd)
@@ -357,7 +358,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
           end: [0, 1, 5, 0],
         },
       })
-      
+
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
@@ -370,16 +371,16 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       )
 
       // Verify normal behavior when singleUndo is disabled
-      assertEquals(commands.filter(cmd => cmd === "silent! undo").length, 1, "Should execute undo")
+      assertEquals(commands.filter((cmd) => cmd === "silent! undo").length, 1, "Should execute undo")
       assertEquals(
-        commands.filter(cmd => cmd.includes("rundo")).length,
+        commands.filter((cmd) => cmd.includes("rundo")).length,
         1,
-        "Should restore undo file when singleUndo is disabled"
+        "Should restore undo file when singleUndo is disabled",
       )
       assertEquals(
-        commands.filter(cmd => cmd.includes('"_d')).length,
+        commands.filter((cmd) => cmd.includes('"_d')).length,
         0,
-        "Should NOT re-delete when singleUndo is disabled"
+        "Should NOT re-delete when singleUndo is disabled",
       )
     })
   })
@@ -387,11 +388,11 @@ describe("PasteHandler - Replace Operation Cycling", () => {
 
 // Helper to create spy call assertions
 function assertSpyCall(
-  spy: ReturnType<typeof spy>,
+  spyInstance: ReturnType<typeof spy>,
   callIndex: number,
   expectedArgs: unknown[],
 ) {
-  const calls = spy.calls
+  const calls = spyInstance.calls
   if (calls.length <= callIndex) {
     throw new Error(`Expected at least ${callIndex + 1} calls, but got ${calls.length}`)
   }

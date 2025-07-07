@@ -38,8 +38,20 @@ export type Rounder = {
   setBaseIndent: (indent: string) => void
   getBaseIndent: () => string | null
   // Replace operation tracking
-  setReplaceInfo: (info: { isReplace: boolean; singleUndo: boolean; motionWise?: string; deletedRange?: { start: number[]; end: number[] } }) => void
-  getReplaceInfo: () => { isReplace: boolean; singleUndo: boolean; motionWise?: string; deletedRange?: { start: number[]; end: number[] } } | null
+  setReplaceInfo: (
+    info: {
+      isReplace: boolean
+      singleUndo: boolean
+      motionWise?: string
+      deletedRange?: { start: number[]; end: number[] }
+    },
+  ) => void
+  getReplaceInfo: () => {
+    isReplace: boolean
+    singleUndo: boolean
+    motionWise?: string
+    deletedRange?: { start: number[]; end: number[] }
+  } | null
 }
 
 export const createRounder = (logger: DebugLogger | null): Rounder => {
@@ -59,7 +71,12 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
   let beforePasteCursorPos: number[] | null = null
   let temporarySmartIndent: boolean | null = null
   let baseIndent: string | null = null
-  let replaceInfo: { isReplace: boolean; singleUndo: boolean; motionWise?: string; deletedRange?: { start: number[]; end: number[] } } | null = null
+  let replaceInfo: {
+    isReplace: boolean
+    singleUndo: boolean
+    motionWise?: string
+    deletedRange?: { start: number[]; end: number[] }
+  } | null = null
 
   return {
     start: (newEntries: YankEntry[], info: PasteInfo) => {
@@ -255,7 +272,14 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
 
     getBaseIndent: () => baseIndent,
 
-    setReplaceInfo: (info: { isReplace: boolean; singleUndo: boolean; motionWise?: string; deletedRange?: { start: number[]; end: number[] } }) => {
+    setReplaceInfo: (
+      info: {
+        isReplace: boolean
+        singleUndo: boolean
+        motionWise?: string
+        deletedRange?: { start: number[]; end: number[] }
+      },
+    ) => {
       replaceInfo = info
       logger?.log("rounder", "Replace info set", { info })
     },

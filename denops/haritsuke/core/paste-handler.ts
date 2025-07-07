@@ -142,27 +142,27 @@ export const createPasteHandler = (
             // For replace operations with single undo, we need special handling
             // The undo will restore both the delete and paste, so we need to delete again
             logger?.log("apply", "Replace operation with single undo detected")
-            
+
             // Perform undo to restore the original state
             logger?.log("apply", "Executing undo")
             await vimApi.cmd(`silent! undo`)
-            
+
             // Now delete the range again to prepare for new paste
             const { start, end } = replaceInfo.deletedRange
             // Determine visual command based on motionWise
-            let visualCmd = "v"  // default to char-wise
+            let visualCmd = "v" // default to char-wise
             if (replaceInfo.motionWise === "line") {
               visualCmd = "V"
             } else if (replaceInfo.motionWise === "block") {
-              visualCmd = "\x16"  // Ctrl-V for block-wise
+              visualCmd = "\x16" // Ctrl-V for block-wise
             }
-            
+
             // For line-wise operations, column position is irrelevant
             const deleteCmd = replaceInfo.motionWise === "line"
               ? `silent! normal! ${start[1]}G${visualCmd}${end[1]}G"_d`
               : `silent! normal! ${start[1]}G${start[2]}|${visualCmd}${end[1]}G${end[2]}|"_d`
-            
-            logger?.log("apply", "Re-deleting range for replace", { 
+
+            logger?.log("apply", "Re-deleting range for replace", {
               deleteCmd,
               motionWise: replaceInfo.motionWise,
               start,

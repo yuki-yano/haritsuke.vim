@@ -521,7 +521,7 @@ describe("rounder", () => {
         },
       }
       rounder.setReplaceInfo(lineInfo)
-      
+
       const retrieved = rounder.getReplaceInfo()
       assertExists(retrieved)
       assertEquals(retrieved.motionWise, "line")
@@ -542,7 +542,7 @@ describe("rounder", () => {
         },
       }
       rounder.setReplaceInfo(blockInfo)
-      
+
       const retrieved = rounder.getReplaceInfo()
       assertExists(retrieved)
       assertEquals(retrieved.motionWise, "block")
