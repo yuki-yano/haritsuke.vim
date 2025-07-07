@@ -328,7 +328,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
       // Set replace operation info for proper cycling
       rounder.setReplaceInfo({
         isReplace: true,
-        singleUndo: state.config.operator_replace_single_undo ?? false,
+        singleUndo: state.config.operator_replace_single_undo ?? true,
         motionWise,
         deletedRange: {
           start: [startPos[0] ?? 0, startPos[1] ?? 0, startPos[2] ?? 0, startPos[3] ?? 0],

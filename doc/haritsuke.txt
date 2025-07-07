@@ -172,7 +172,7 @@ haritsuke#list()
 >
     let history = haritsuke#list()
     " Returns: [{'type': 'v', 'content': 'yanked text'}, ...]
-    
+
     " Show first 5 entries
     for entry in history[0:4]
       echo printf("%s: %s", entry.type, entry.content)
@@ -194,7 +194,8 @@ Configure haritsuke.vim by setting `g:haritsuke_config` dictionary:
       \ 'debug': v:false,
       \ 'use_region_hl': v:true,
       \ 'region_hl_groupname': 'HaritsukeRegion',
-      \ 'smart_indent': v:true
+      \ 'smart_indent': v:true,
+      \ 'operator_replace_single_undo': v:true
       \ }
 <
 
@@ -232,6 +233,13 @@ smart_indent                            *g:haritsuke_config.smart_indent*
     Enable smart indentation adjustment for line-wise paste operations.
     When enabled, automatically adjusts the indentation of pasted lines
     to match the current context.
+    Default: v:true
+
+operator_replace_single_undo            *g:haritsuke_config.operator_replace_single_undo*
+    Control undo behavior for replace operator with paste cycling.
+    When enabled (default), the entire replace operation including all
+    paste cycling is treated as a single undo block. When disabled,
+    each paste cycle creates a separate undo entry.
     Default: v:true
 
 ==============================================================================

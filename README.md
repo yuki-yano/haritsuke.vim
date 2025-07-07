@@ -132,7 +132,8 @@ let g:haritsuke_config = {
   \ 'debug': v:false,           " Enable debug logging
   \ 'use_region_hl': v:true,    " Enable highlight during paste cycling
   \ 'region_hl_groupname': 'HaritsukeRegion',  " Highlight group name
-  \ 'smart_indent': v:true      " Enable smart indentation adjustment
+  \ 'smart_indent': v:true,     " Enable smart indentation adjustment
+  \ 'operator_replace_single_undo': v:true  " Treat replace operation as single undo
   \ }
 ```
 
@@ -147,7 +148,8 @@ vim.g.haritsuke_config = {
   debug = false,             -- Enable debug logging
   use_region_hl = true,      -- Enable highlight during paste cycling
   region_hl_groupname = 'HaritsukeRegion',  -- Highlight group name
-  smart_indent = true        -- Enable smart indentation adjustment
+  smart_indent = true,       -- Enable smart indentation adjustment
+  operator_replace_single_undo = true  -- Treat replace operation as single undo
 }
 ```
 
@@ -161,6 +163,7 @@ vim.g.haritsuke_config = {
 - **use_region_hl**: Show visual highlight of pasted region during cycling (default: true)
 - **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
 - **smart_indent**: Enable smart indentation adjustment for line-wise paste operations. Automatically adjusts pasted lines to match the current context (default: true)
+- **operator_replace_single_undo**: Control undo behavior for replace operator with paste cycling. When enabled, the entire replace operation including all paste cycling is treated as a single undo block (default: true)
 
 ### Highlight customization
 
