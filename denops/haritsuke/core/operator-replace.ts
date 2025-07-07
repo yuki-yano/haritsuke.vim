@@ -13,6 +13,7 @@ export type ReplaceOperatorOptions = {
   register: string
   visualMode?: boolean // true if called from visual mode
   smartIndent?: boolean // true to enable smart indent adjustment
+  singleUndo?: boolean // true to combine delete and paste into single undo
 }
 
 /**
@@ -121,13 +122,24 @@ export const executeReplaceOperator = async (
       endPos[2]
     }|"${SPECIAL_REGISTERS.BLACK_HOLE}d`
 
-  // Split undo: delete operation
+  // Execute delete operation
   await vimApi.cmd(deleteCmd)
 
-  // Force undo split by resetting undolevels
-  // This ensures delete and paste are separate undo blocks
-  const undolevels = await vimApi.eval("&undolevels") as number
-  await vimApi.cmd(`set undolevels=${undolevels}`)
+  if (!options.singleUndo) {
+    // Force undo split by resetting undolevels
+    // This ensures delete and paste are separate undo blocks
+    const undolevels = await vimApi.eval("&undolevels") as number
+    await vimApi.cmd(`set undolevels=${undolevels}`)
+  } else {
+    // Join the next operation with the previous one into a single undo block
+    // Note: undojoin fails if no previous change exists or if undo was performed
+    try {
+      await vimApi.cmd("undojoin")
+    } catch (_e) {
+      // E790: undojoin is not allowed after undo
+      // This is expected if user has performed undo, just continue
+    }
+  }
 
   // Paste from register as a separate undo block
   // Pass the original buffer end line (before delete) for correct paste command decision

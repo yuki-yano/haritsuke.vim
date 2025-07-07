@@ -287,11 +287,24 @@ export const createApi = (denops: Denops, state: PluginState) => {
       visualMode,
     })
 
+    // Save undo file BEFORE replace operation for proper cycle support
+    let undoFilePath: string | undefined
+    if (state.rounderManager && state.cache) {
+      undoFilePath = await saveUndoFile(denops, state.logger)
+    }
+
+    // Get motion boundaries before replace for rounder tracking
+    const startMark = visualMode ? "'<" : "'["
+    const endMark = visualMode ? "'>" : "']"
+    const startPos = await state.vimApi!.getpos(startMark)
+    const endPos = await state.vimApi!.getpos(endMark)
+
     const actualPasteCmd = await executeReplaceOperator({
       motionWise: motionWise as "char" | "line" | "block",
       register,
       visualMode,
       smartIndent: state.config.smart_indent,
+      singleUndo: state.config.operator_replace_single_undo,
     }, state.vimApi!)
 
     // Initialize rounder for cycling through history after operator-replace
@@ -307,6 +320,22 @@ export const createApi = (denops: Denops, state: PluginState) => {
         register,
       }
 
+      // Set the undo file path that was saved before replace
+      if (undoFilePath) {
+        rounder.setUndoFilePath(undoFilePath)
+      }
+
+      // Set replace operation info for proper cycling
+      rounder.setReplaceInfo({
+        isReplace: true,
+        singleUndo: state.config.operator_replace_single_undo ?? false,
+        motionWise,
+        deletedRange: {
+          start: [startPos[0] ?? 0, startPos[1] ?? 0, startPos[2] ?? 0, startPos[3] ?? 0],
+          end: [endPos[0] ?? 0, endPos[1] ?? 0, endPos[2] ?? 0, endPos[3] ?? 0],
+        },
+      })
+
       // Initialize rounder for history navigation after replace
       await initializeRounderForPaste(
         denops,
@@ -318,14 +347,22 @@ export const createApi = (denops: Denops, state: PluginState) => {
         },
       )
 
-      // Update changedTick after operator-replace to prevent immediate stop
-      const changedTick = await denops.eval("b:changedtick") as number
-      rounder.setChangedTick(changedTick)
-
-      // Apply highlight if enabled
-      if (state.config.use_region_hl) {
-        await applyHighlight(denops, state, register)
-      }
+      // Complete the paste operation setup
+      await processPasteCompletion(
+        denops,
+        rounder,
+        {
+          mode: pasteInfo.mode,
+          vmode: pasteInfo.vmode,
+          count: pasteInfo.count,
+          register: pasteInfo.register,
+          undoFilePath,
+        },
+        state,
+        {
+          applyHighlight: async (d, s, r) => await applyHighlight(d, s, r),
+        },
+      )
 
       state.logger?.log("operator", "Rounder initialized after operator-replace")
     }

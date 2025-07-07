@@ -126,6 +126,10 @@ export const createPasteHandler = (
             }
           }
 
+          // Check if this is a replace operation with single undo enabled
+          const replaceInfo = rounder?.getReplaceInfo?.()
+          const isReplaceWithSingleUndo = replaceInfo?.isReplace && replaceInfo?.singleUndo
+
           // Set register content BEFORE undo
           const targetReg = entry.register || '"'
           logger?.log("apply", "Setting register", {
@@ -134,15 +138,48 @@ export const createPasteHandler = (
           })
           await vimApi.setreg(targetReg, contentToSet, entry.regtype)
 
-          // Perform single undo
-          logger?.log("apply", "Executing undo")
-          await vimApi.cmd(`silent! undo`)
+          if (isReplaceWithSingleUndo && replaceInfo?.deletedRange) {
+            // For replace operations with single undo, we need special handling
+            // The undo will restore both the delete and paste, so we need to delete again
+            logger?.log("apply", "Replace operation with single undo detected")
+            
+            // Perform undo to restore the original state
+            logger?.log("apply", "Executing undo")
+            await vimApi.cmd(`silent! undo`)
+            
+            // Now delete the range again to prepare for new paste
+            const { start, end } = replaceInfo.deletedRange
+            // Determine visual command based on motionWise
+            let visualCmd = "v"  // default to char-wise
+            if (replaceInfo.motionWise === "line") {
+              visualCmd = "V"
+            } else if (replaceInfo.motionWise === "block") {
+              visualCmd = "\x16"  // Ctrl-V for block-wise
+            }
+            
+            // For line-wise operations, column position is irrelevant
+            const deleteCmd = replaceInfo.motionWise === "line"
+              ? `silent! normal! ${start[1]}G${visualCmd}${end[1]}G"_d`
+              : `silent! normal! ${start[1]}G${start[2]}|${visualCmd}${end[1]}G${end[2]}|"_d`
+            
+            logger?.log("apply", "Re-deleting range for replace", { 
+              deleteCmd,
+              motionWise: replaceInfo.motionWise,
+              start,
+              end,
+            })
+            await vimApi.cmd(deleteCmd)
+          } else {
+            // Normal behavior: just undo the previous paste
+            logger?.log("apply", "Executing undo")
+            await vimApi.cmd(`silent! undo`)
 
-          // Restore undo file to get back to the state BEFORE initial paste
-          // This includes cursor position and all state
-          if (undoFilePath) {
-            logger?.log("apply", "Restoring undo file", { path: undoFilePath })
-            await vimApi.cmd(`silent! rundo ${undoFilePath}`)
+            // Restore undo file to get back to the state BEFORE initial paste
+            // This includes cursor position and all state
+            if (undoFilePath) {
+              logger?.log("apply", "Restoring undo file", { path: undoFilePath })
+              await vimApi.cmd(`silent! rundo ${undoFilePath}`)
+            }
           }
 
           // Debug: check buffer state after undo and rundo

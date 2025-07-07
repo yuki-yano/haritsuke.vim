@@ -478,4 +478,122 @@ describe("rounder", () => {
       assertEquals(rounder.getBaseIndent(), "  ")
     })
   })
+
+  describe("replace operation info", () => {
+    it("should store and retrieve replace info", () => {
+      const rounder = createRounder(null)
+
+      // Initial state should be null
+      assertEquals(rounder.getReplaceInfo(), null)
+
+      // Set replace info with minimal data
+      const minimalInfo = {
+        isReplace: true,
+        singleUndo: false,
+      }
+      rounder.setReplaceInfo(minimalInfo)
+      assertEquals(rounder.getReplaceInfo(), minimalInfo)
+
+      // Set replace info with full data
+      const fullInfo = {
+        isReplace: true,
+        singleUndo: true,
+        motionWise: "char",
+        deletedRange: {
+          start: [0, 10, 5, 0],
+          end: [0, 10, 15, 0],
+        },
+      }
+      rounder.setReplaceInfo(fullInfo)
+      assertEquals(rounder.getReplaceInfo(), fullInfo)
+    })
+
+    it("should handle line-wise replace info", () => {
+      const rounder = createRounder(null)
+
+      const lineInfo = {
+        isReplace: true,
+        singleUndo: true,
+        motionWise: "line",
+        deletedRange: {
+          start: [0, 5, 1, 0],
+          end: [0, 8, 20, 0],
+        },
+      }
+      rounder.setReplaceInfo(lineInfo)
+      
+      const retrieved = rounder.getReplaceInfo()
+      assertExists(retrieved)
+      assertEquals(retrieved.motionWise, "line")
+      assertEquals(retrieved.deletedRange?.start[1], 5)
+      assertEquals(retrieved.deletedRange?.end[1], 8)
+    })
+
+    it("should handle block-wise replace info", () => {
+      const rounder = createRounder(null)
+
+      const blockInfo = {
+        isReplace: true,
+        singleUndo: true,
+        motionWise: "block",
+        deletedRange: {
+          start: [0, 1, 10, 0],
+          end: [0, 5, 15, 0],
+        },
+      }
+      rounder.setReplaceInfo(blockInfo)
+      
+      const retrieved = rounder.getReplaceInfo()
+      assertExists(retrieved)
+      assertEquals(retrieved.motionWise, "block")
+      assertEquals(retrieved.deletedRange?.start[2], 10)
+      assertEquals(retrieved.deletedRange?.end[2], 15)
+    })
+
+    it("should clear replace info on stop", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "p", count: 1, register: '"' })
+
+      // Set replace info
+      rounder.setReplaceInfo({
+        isReplace: true,
+        singleUndo: true,
+        motionWise: "char",
+      })
+      assertExists(rounder.getReplaceInfo())
+
+      // Stop should clear it
+      rounder.stop()
+      assertEquals(rounder.getReplaceInfo(), null)
+    })
+
+    it("should persist replace info across cycles", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "P", count: 1, register: '"' })
+
+      // Set replace info
+      const replaceInfo = {
+        isReplace: true,
+        singleUndo: true,
+        motionWise: "char",
+        deletedRange: {
+          start: [0, 1, 1, 0],
+          end: [0, 1, 5, 0],
+        },
+      }
+      rounder.setReplaceInfo(replaceInfo)
+
+      // Cycle through entries
+      await rounder.previous()
+      await rounder.previous()
+      await rounder.next()
+
+      // Replace info should still be available
+      assertEquals(rounder.getReplaceInfo(), replaceInfo)
+    })
+  })
 })

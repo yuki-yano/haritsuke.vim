@@ -2049,4 +2049,111 @@ describe("executeReplaceOperator", () => {
       assertEquals(commands[2], 'silent! normal! "%P', "Handle read-only register")
     })
   })
+
+  describe("single undo option", () => {
+    it("should use undojoin when singleUndo is true", async () => {
+      // Arrange
+      const commands: string[] = []
+      const mockVimApi = createMockVimApi({
+        getpos: (expr: string) => {
+          if (expr === "'[") return Promise.resolve([0, 1, 1, 0])
+          if (expr === "']") return Promise.resolve([0, 1, 5, 0])
+          return Promise.resolve([0, 0, 0, 0])
+        },
+        cmd: (cmd: string) => {
+          commands.push(cmd)
+          return Promise.resolve()
+        },
+        eval: (expr: string) => {
+          if (expr === "strlen(getline(1))") return Promise.resolve(10)
+          if (expr.startsWith("getregtype(")) return Promise.resolve("v")
+          return Promise.resolve("")
+        },
+        line: () => Promise.resolve(5),
+      })
+
+      // Act
+      await executeReplaceOperator({
+        motionWise: "char",
+        register: '"',
+        singleUndo: true,
+      }, mockVimApi)
+
+      // Assert
+      assertEquals(commands.length, 3, "Should execute 3 commands")
+      assertEquals(commands[0], 'silent! normal! 1G1|v1G5|"_d', "Should delete region")
+      assertEquals(commands[1], "undojoin", "Should use undojoin instead of undolevels")
+      assertEquals(commands[2], 'silent! normal! ""P', "Should paste")
+    })
+
+    it("should handle undojoin errors gracefully", async () => {
+      // Arrange
+      const commands: string[] = []
+      const mockVimApi = createMockVimApi({
+        getpos: (expr: string) => {
+          if (expr === "'[") return Promise.resolve([0, 1, 1, 0])
+          if (expr === "']") return Promise.resolve([0, 1, 5, 0])
+          return Promise.resolve([0, 0, 0, 0])
+        },
+        cmd: (cmd: string) => {
+          commands.push(cmd)
+          // Simulate undojoin error (E790: undojoin is not allowed after undo)
+          if (cmd === "undojoin") {
+            throw new Error("E790: undojoin is not allowed after undo")
+          }
+          return Promise.resolve()
+        },
+        eval: (expr: string) => {
+          if (expr === "strlen(getline(1))") return Promise.resolve(10)
+          if (expr.startsWith("getregtype(")) return Promise.resolve("v")
+          return Promise.resolve("")
+        },
+        line: () => Promise.resolve(5),
+      })
+
+      // Act
+      await executeReplaceOperator({
+        motionWise: "char",
+        register: '"',
+        singleUndo: true,
+      }, mockVimApi)
+
+      // Assert - should continue despite undojoin error
+      assertEquals(commands.length, 3, "Should execute 3 commands")
+      assertEquals(commands[2], 'silent! normal! ""P', "Should still paste after undojoin error")
+    })
+
+    it("should use undolevels when singleUndo is false", async () => {
+      // Arrange
+      const commands: string[] = []
+      const mockVimApi = createMockVimApi({
+        getpos: (expr: string) => {
+          if (expr === "'[") return Promise.resolve([0, 1, 1, 0])
+          if (expr === "']") return Promise.resolve([0, 1, 5, 0])
+          return Promise.resolve([0, 0, 0, 0])
+        },
+        cmd: (cmd: string) => {
+          commands.push(cmd)
+          return Promise.resolve()
+        },
+        eval: (expr: string) => {
+          if (expr === "&undolevels") return Promise.resolve(1000)
+          if (expr === "strlen(getline(1))") return Promise.resolve(10)
+          if (expr.startsWith("getregtype(")) return Promise.resolve("v")
+          return Promise.resolve("")
+        },
+        line: () => Promise.resolve(5),
+      })
+
+      // Act
+      await executeReplaceOperator({
+        motionWise: "char",
+        register: '"',
+        singleUndo: false,
+      }, mockVimApi)
+
+      // Assert
+      assertEquals(commands[1], "set undolevels=1000", "Should use undolevels when singleUndo is false")
+    })
+  })
 })
