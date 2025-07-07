@@ -1,13 +1,13 @@
 import { assertEquals, assertRejects } from "../deps/std.ts"
 import { describe, it } from "../deps/test.ts"
-import { withErrorHandling, withErrorHandlingSync, retryWithBackoff } from "./error-handling.ts"
+import { retryWithBackoff, withErrorHandling, withErrorHandlingSync } from "./error-handling.ts"
 
 describe("withErrorHandling", () => {
   const logger = null // Avoid environment variable access
-  
+
   it("should return operation result on success", async () => {
     const result = await withErrorHandling(
-      async () => "success",
+      () => Promise.resolve("success"),
       "test",
       logger,
     )
@@ -16,7 +16,7 @@ describe("withErrorHandling", () => {
 
   it("should return default value on error", async () => {
     const result = await withErrorHandling(
-      async () => {
+      () => {
         throw new Error("test error")
       },
       "test",
@@ -28,13 +28,14 @@ describe("withErrorHandling", () => {
 
   it("should throw error when no default value", async () => {
     await assertRejects(
-      () => withErrorHandling(
-        async () => {
-          throw new Error("test error")
-        },
-        "test",
-        logger,
-      ),
+      () =>
+        withErrorHandling(
+          () => {
+            throw new Error("test error")
+          },
+          "test",
+          logger,
+        ),
       Error,
       "test error",
     )
@@ -43,7 +44,7 @@ describe("withErrorHandling", () => {
 
 describe("withErrorHandlingSync", () => {
   const logger = null // Avoid environment variable access
-  
+
   it("should return operation result on success", () => {
     const result = withErrorHandlingSync(
       () => "success",
@@ -84,9 +85,9 @@ describe("retryWithBackoff", () => {
   it("should return result on first success", async () => {
     let attempts = 0
     const result = await retryWithBackoff(
-      async () => {
+      () => {
         attempts++
-        return "success"
+        return Promise.resolve("success")
       },
       { maxRetries: 3 },
     )
@@ -97,14 +98,14 @@ describe("retryWithBackoff", () => {
   it("should retry on failure and succeed", async () => {
     let attempts = 0
     const result = await retryWithBackoff(
-      async () => {
+      () => {
         attempts++
         if (attempts < 3) {
           throw new Error("retry me")
         }
-        return "success"
+        return Promise.resolve("success")
       },
-      { 
+      {
         maxRetries: 3,
         initialDelay: 10,
       },
@@ -116,16 +117,17 @@ describe("retryWithBackoff", () => {
   it("should throw after max retries", async () => {
     let attempts = 0
     await assertRejects(
-      () => retryWithBackoff(
-        async () => {
-          attempts++
-          throw new Error("always fails")
-        },
-        { 
-          maxRetries: 2,
-          initialDelay: 10,
-        },
-      ),
+      () =>
+        retryWithBackoff(
+          () => {
+            attempts++
+            throw new Error("always fails")
+          },
+          {
+            maxRetries: 2,
+            initialDelay: 10,
+          },
+        ),
       Error,
       "always fails",
     )
@@ -135,31 +137,32 @@ describe("retryWithBackoff", () => {
   it("should respect backoff timing", async () => {
     const delays: number[] = []
     let lastTime = Date.now()
-    
+
     await assertRejects(
-      () => retryWithBackoff(
-        async () => {
-          const now = Date.now()
-          const elapsed = now - lastTime
-          if (elapsed > 5) { // Only record actual delays, not the initial call
-            delays.push(elapsed)
-          }
-          lastTime = now
-          throw new Error("timing test")
-        },
-        { 
-          maxRetries: 2,
-          initialDelay: 50,
-          backoffFactor: 2,
-        },
-      ),
+      () =>
+        retryWithBackoff(
+          () => {
+            const now = Date.now()
+            const elapsed = now - lastTime
+            if (elapsed > 5) { // Only record actual delays, not the initial call
+              delays.push(elapsed)
+            }
+            lastTime = now
+            throw new Error("timing test")
+          },
+          {
+            maxRetries: 2,
+            initialDelay: 50,
+            backoffFactor: 2,
+          },
+        ),
     )
-    
+
     // Should have 2 retry delays
     assertEquals(delays.length, 2)
     // First retry should be ~50ms (allow some variance)
     assertEquals(delays[0] >= 45 && delays[0] <= 65, true)
-    // Second retry should be ~100ms (allow some variance)  
+    // Second retry should be ~100ms (allow some variance)
     assertEquals(delays[1] >= 90 && delays[1] <= 115, true)
   })
 })

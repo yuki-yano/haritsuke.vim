@@ -360,13 +360,14 @@ export const createYankDatabase = (
    */
   const clear = (): Promise<void> => {
     return withErrorHandling(
-      async () => {
+      () => {
         if (!db) {
           throw new Error("Database not initialized")
         }
 
         db.exec("DELETE FROM yank_history")
         logger?.log("database", "Cleared all entries from database")
+        return Promise.resolve()
       },
       "database clear",
       logger,

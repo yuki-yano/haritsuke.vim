@@ -30,20 +30,20 @@ export const isYankEntry = is.ObjectOf({
  */
 export function validateYankEntry(entry: unknown): YankEntry {
   assert(entry, isYankEntry)
-  
+
   // Additional validation
   if (!entry.id) {
     throw new Error("Invalid YankEntry: id must be a non-empty string")
   }
-  
+
   if (entry.timestamp <= 0) {
     throw new Error("Invalid YankEntry: timestamp must be a positive number")
   }
-  
+
   if (entry.size < 0) {
     throw new Error("Invalid YankEntry: size must be a non-negative number")
   }
-  
+
   return entry as YankEntry
 }
 

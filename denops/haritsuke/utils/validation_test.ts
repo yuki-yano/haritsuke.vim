@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "../deps/std.ts"
 import { describe, it } from "../deps/test.ts"
-import { validateYankEntry, validateContentSize, calculateContentSize } from "./validation.ts"
+import { calculateContentSize, validateContentSize, validateYankEntry } from "./validation.ts"
 
 describe("validateYankEntry", () => {
   it("should validate valid YankEntry", () => {

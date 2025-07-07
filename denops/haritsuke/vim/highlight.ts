@@ -29,70 +29,74 @@ export const createHighlightManager = (
 
   return {
     apply: async (denops: Denops, register: string): Promise<void> => {
-      await withErrorHandling(async () => {
-        // Get current buffer number
-        const bufnr = await fn.bufnr(denops, "%")
+      await withErrorHandling(
+        async () => {
+          // Get current buffer number
+          const bufnr = await fn.bufnr(denops, "%")
 
-        // Get paste region marks
-        const startLine = await fn.line(denops, "'[")
-        const startCol = await fn.col(denops, "'[")
-        const endLine = await fn.line(denops, "']")
-        const endCol = await fn.col(denops, "']")
+          // Get paste region marks
+          const startLine = await fn.line(denops, "'[")
+          const startCol = await fn.col(denops, "'[")
+          const endLine = await fn.line(denops, "']")
+          const endCol = await fn.col(denops, "']")
 
-        // Get register type to determine highlight pattern
-        const regtype = await fn.getregtype(denops, register)
+          // Get register type to determine highlight pattern
+          const regtype = await fn.getregtype(denops, register)
 
-        let pattern = ""
-        if (regtype[0] === "\x16" || regtype === "b") {
-          // Block mode
-          pattern = `\\v%>${startLine - 1}l%>${startCol - 1}c.*%<${endLine + 1}l%<${endCol + 1}c`
-        } else if (regtype === "v") {
-          // Character mode
-          const dots = startLine === endLine ? ".*" : "\\_.*"
-          pattern = `\\v%${startLine}l%>${startCol - 1}c${dots}%${endLine}l%<${endCol + 1}c`
-        } else {
-          // Line mode - highlight lines without including newline characters
-          if (startLine === endLine) {
-            // Single line - match from start to just before newline
-            pattern = `\\v%${startLine}l^.*$`
+          let pattern = ""
+          if (regtype[0] === "\x16" || regtype === "b") {
+            // Block mode
+            pattern = `\\v%>${startLine - 1}l%>${startCol - 1}c.*%<${endLine + 1}l%<${endCol + 1}c`
+          } else if (regtype === "v") {
+            // Character mode
+            const dots = startLine === endLine ? ".*" : "\\_.*"
+            pattern = `\\v%${startLine}l%>${startCol - 1}c${dots}%${endLine}l%<${endCol + 1}c`
           } else {
-            // Multiple lines - each line separately without newline
-            const patterns = []
-            for (let line = startLine; line <= endLine; line++) {
-              patterns.push(`%${line}l^.*$`)
+            // Line mode - highlight lines without including newline characters
+            if (startLine === endLine) {
+              // Single line - match from start to just before newline
+              pattern = `\\v%${startLine}l^.*$`
+            } else {
+              // Multiple lines - each line separately without newline
+              const patterns = []
+              for (let line = startLine; line <= endLine; line++) {
+                patterns.push(`%${line}l^.*$`)
+              }
+              pattern = `\\v(${patterns.join("|")})`
             }
-            pattern = `\\v(${patterns.join("|")})`
           }
-        }
 
-        // Clear previous highlight for this buffer
-        const existingMatchId = highlightMatchIds.get(bufnr)
-        if (existingMatchId && existingMatchId > 0) {
-          await withErrorHandling(
-            async () => {
-              await fn.matchdelete(denops, existingMatchId)
-            },
-            "highlight matchdelete",
-            logger,
-            undefined, // Continue on error
+          // Clear previous highlight for this buffer
+          const existingMatchId = highlightMatchIds.get(bufnr)
+          if (existingMatchId && existingMatchId > 0) {
+            await withErrorHandling(
+              async () => {
+                await fn.matchdelete(denops, existingMatchId)
+              },
+              "highlight matchdelete",
+              logger,
+              undefined, // Continue on error
+            )
+            highlightMatchIds.delete(bufnr)
+          }
+
+          // Apply new highlight
+          const matchId = await fn.matchadd(
+            denops,
+            config.regionHlGroupname || "HaritsukeRegion",
+            pattern,
           )
-          highlightMatchIds.delete(bufnr)
-        }
+          highlightMatchIds.set(bufnr, matchId)
 
-        // Apply new highlight
-        const matchId = await fn.matchadd(
-          denops,
-          config.regionHlGroupname || "HaritsukeRegion",
-          pattern,
-        )
-        highlightMatchIds.set(bufnr, matchId)
-
-        logger?.log("highlight", "Highlight applied", {
-          bufnr,
-          pattern,
-          matchId,
-        })
-      }, "highlight apply", logger)
+          logger?.log("highlight", "Highlight applied", {
+            bufnr,
+            pattern,
+            matchId,
+          })
+        },
+        "highlight apply",
+        logger,
+      )
     },
 
     clear: async (denops: Denops): Promise<void> => {

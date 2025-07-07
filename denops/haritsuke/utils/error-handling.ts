@@ -19,11 +19,11 @@ export async function withErrorHandling<T>(
     return await operation()
   } catch (error) {
     logger?.error(context, "Operation failed", error)
-    
+
     if (defaultValue !== undefined) {
       return defaultValue
     }
-    
+
     throw error
   }
 }
@@ -47,11 +47,11 @@ export function withErrorHandlingSync<T>(
     return operation()
   } catch (error) {
     logger?.error(context, "Operation failed", error)
-    
+
     if (defaultValue !== undefined) {
       return defaultValue
     }
-    
+
     throw error
   }
 }
@@ -91,7 +91,7 @@ export async function retryWithBackoff<T>(
       return await operation()
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
-      
+
       if (attempt < maxRetries) {
         logger?.log(context, `Attempt ${attempt + 1} failed, retrying in ${delay}ms...`)
         await new Promise((resolve) => setTimeout(resolve, delay))
