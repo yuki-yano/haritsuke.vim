@@ -33,6 +33,10 @@ export type Rounder = {
   setBeforePasteCursorPos: (pos: number[]) => void
   getBeforePasteCursorPos: () => number[] | null
   isFirstCycle: () => boolean
+  setTemporarySmartIndent: (value: boolean | null) => void
+  getTemporarySmartIndent: () => boolean | null
+  setBaseIndent: (indent: string) => void
+  getBaseIndent: () => string | null
 }
 
 export const createRounder = (logger: DebugLogger | null): Rounder => {
@@ -50,6 +54,8 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
   let changedTick = 0
   let pasteRange: { start: number[]; end: number[] } | null = null
   let beforePasteCursorPos: number[] | null = null
+  let temporarySmartIndent: boolean | null = null
+  let baseIndent: string | null = null
 
   return {
     start: (newEntries: YankEntry[], info: PasteInfo) => {
@@ -171,6 +177,8 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
       changedTick = 0
       pasteRange = null
       beforePasteCursorPos = null
+      temporarySmartIndent = null
+      baseIndent = null
       logger?.log("rounder", "Stopped")
     },
 
@@ -229,6 +237,18 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
     getBeforePasteCursorPos: () => beforePasteCursorPos,
 
     isFirstCycle: () => isFirstCycle,
+
+    setTemporarySmartIndent: (value: boolean | null) => {
+      temporarySmartIndent = value
+    },
+
+    getTemporarySmartIndent: () => temporarySmartIndent,
+
+    setBaseIndent: (indent: string) => {
+      baseIndent = indent
+    },
+
+    getBaseIndent: () => baseIndent,
   }
 }
 

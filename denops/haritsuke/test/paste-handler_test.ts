@@ -61,7 +61,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false },
+        () => ({ useRegionHl: false }),
         mockVimApi,
         mockCallbacks,
       )
@@ -121,7 +121,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false },
+        () => ({ useRegionHl: false }),
         mockVimApi,
         callbacks,
       )
@@ -186,7 +186,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false },
+        () => ({ useRegionHl: false }),
         mockVimApi,
         callbacks,
       )
@@ -259,7 +259,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false, smartIndent: true },
+        () => ({ useRegionHl: false, smartIndent: true }),
         mockVimApi,
         callbacks,
       )
@@ -306,7 +306,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false, smartIndent: true },
+        () => ({ useRegionHl: false, smartIndent: true }),
         mockVimApi,
         callbacks,
       )
@@ -347,7 +347,7 @@ describe("createPasteHandler", () => {
 
       const pasteHandler = createPasteHandler(
         null,
-        { useRegionHl: false, smartIndent: false },
+        () => ({ useRegionHl: false, smartIndent: false }),
         mockVimApi,
         callbacks,
       )
@@ -360,6 +360,158 @@ describe("createPasteHandler", () => {
       }
 
       const rounder = createRounder(null)
+
+      await pasteHandler.applyHistoryEntry(
+        {} as Denops,
+        entry,
+        10,
+        { mode: "p", count: 1, register: '"' },
+        undefined,
+        rounder,
+      )
+
+      // Verify that setreg was called with original content (no adjustment)
+      const setregCalls = (mockVimApi.setreg as ReturnType<typeof spy>).calls
+      assertEquals(setregCalls.length, 1)
+      assertEquals(setregCalls[0].args[1], "    function test() {\n      return 42;\n    }")
+    })
+
+    it("uses temporary smart indent setting from rounder when available", async () => {
+      const callbacks = createMockCallbacks()
+
+      const mockVimApi = createMockVimApi({
+        cmd: spy(() => Promise.resolve()),
+        setreg: spy(() => Promise.resolve()),
+        getreg: () => Promise.resolve("    function test() {\n      return 42;\n    }"),
+        setGlobalVar: spy(() => Promise.resolve()),
+        getline: () => Promise.resolve("  const result = "),
+        line: () => Promise.resolve(10),
+        getpos: () => Promise.resolve([0, 10, 16, 0]),
+        getwinvar: (_, name: string) => {
+          if (name === "&shiftwidth") return Promise.resolve(2)
+          if (name === "&expandtab") return Promise.resolve(1)
+          return Promise.resolve(0)
+        },
+        getbufvar: (_, name: string) => {
+          if (name === "&indentexpr") return Promise.resolve("")
+          return Promise.resolve(0)
+        },
+        eval: (expr: string) => {
+          if (expr.includes("indent(")) return Promise.resolve(4) // 2 indent levels * 2 spaces
+          return Promise.resolve(0)
+        },
+      })
+
+      const pasteHandler = createPasteHandler(
+        null,
+        () => ({ useRegionHl: false, smartIndent: false }), // Global setting is false
+        mockVimApi,
+        callbacks,
+      )
+
+      const entry: YankEntry = {
+        id: "1",
+        content: "    function test() {\n      return 42;\n    }",
+        regtype: "V", // Line-wise
+        timestamp: 100,
+      }
+
+      // Create rounder with temporary smart indent enabled
+      const rounder = createRounder(null)
+      rounder.setTemporarySmartIndent(true) // Override global setting
+
+      await pasteHandler.applyHistoryEntry(
+        {} as Denops,
+        entry,
+        10,
+        { mode: "p", count: 1, register: '"' },
+        undefined,
+        rounder,
+      )
+
+      // Verify that setreg was called with adjusted content (temporary setting overrides global)
+      const setregCalls = (mockVimApi.setreg as ReturnType<typeof spy>).calls
+      assertEquals(setregCalls.length, 1)
+      assertEquals(
+        setregCalls[0].args[1],
+        "  function test() {\n    return 42;\n  }",
+      )
+    })
+
+    it("uses saved base indent when available with temporary smart indent", async () => {
+      const callbacks = createMockCallbacks()
+
+      const mockVimApi = createMockVimApi({
+        cmd: spy(() => Promise.resolve()),
+        setreg: spy(() => Promise.resolve()),
+        getreg: () => Promise.resolve("    function test() {\n      return 42;\n    }"),
+        setGlobalVar: spy(() => Promise.resolve()),
+      })
+
+      const pasteHandler = createPasteHandler(
+        null,
+        () => ({ useRegionHl: false, smartIndent: false }), // Global setting is false
+        mockVimApi,
+        callbacks,
+      )
+
+      const entry: YankEntry = {
+        id: "1",
+        content: "    function test() {\n      return 42;\n    }",
+        regtype: "V", // Line-wise
+        timestamp: 100,
+      }
+
+      // Create rounder with temporary smart indent and base indent
+      const rounder = createRounder(null)
+      rounder.setTemporarySmartIndent(true)
+      rounder.setBaseIndent("      ") // 6 spaces
+
+      await pasteHandler.applyHistoryEntry(
+        {} as Denops,
+        entry,
+        10,
+        { mode: "p", count: 1, register: '"' },
+        undefined,
+        rounder,
+      )
+
+      // Verify that saved base indent was used
+      const setregCalls = (mockVimApi.setreg as ReturnType<typeof spy>).calls
+      assertEquals(setregCalls.length, 1)
+      assertEquals(
+        setregCalls[0].args[1],
+        "      function test() {\n      return 42;\n      }",
+      )
+    })
+
+    it("respects temporary smart indent false even when global is true", async () => {
+      const callbacks = createMockCallbacks()
+
+      const mockVimApi = createMockVimApi({
+        cmd: spy(() => Promise.resolve()),
+        setreg: spy(() => Promise.resolve()),
+        getreg: () => Promise.resolve("    function test() {\n      return 42;\n    }"),
+        setGlobalVar: spy(() => Promise.resolve()),
+      })
+
+      const pasteHandler = createPasteHandler(
+        null,
+        () => ({ useRegionHl: false, smartIndent: true }), // Global setting is true
+        mockVimApi,
+        callbacks,
+      )
+
+      const entry: YankEntry = {
+        id: "1",
+        content: "    function test() {\n      return 42;\n    }",
+        regtype: "V", // Line-wise
+        timestamp: 100,
+      }
+
+      // Create rounder with temporary smart indent disabled
+      const rounder = createRounder(null)
+      rounder.setTemporarySmartIndent(false) // Override global setting
 
       await pasteHandler.applyHistoryEntry(
         {} as Denops,

@@ -16,6 +16,8 @@ export type PasteConfig = {
   smartIndent?: boolean
 }
 
+export type PasteConfigGetter = () => PasteConfig
+
 export type PasteHandler = {
   applyHistoryEntry: (
     denops: Denops,
@@ -37,7 +39,7 @@ export type PasteHandlerCallbacks = {
  */
 export const createPasteHandler = (
   logger: DebugLogger | null,
-  config: PasteConfig,
+  getConfig: PasteConfigGetter,
   vimApi: VimApi,
   callbacks: PasteHandlerCallbacks,
 ): PasteHandler => {
@@ -91,13 +93,37 @@ export const createPasteHandler = (
 
           // Apply smart indent adjustment if enabled and line-wise paste
           let contentToSet = entry.content
-          if (config.smartIndent && entry.regtype === "V") {
-            contentToSet = await adjustContentIndentSmart(
-              entry.content,
-              pasteInfo,
-              vimApi,
-              logger,
-            )
+          const config = getConfig()
+
+          // Check if rounder has temporary smart indent setting
+          const temporarySmartIndent = rounder?.getTemporarySmartIndent?.()
+          const shouldApplySmartIndent = temporarySmartIndent !== null ? temporarySmartIndent : config.smartIndent
+
+          if (shouldApplySmartIndent && entry.regtype === "V") {
+            // If rounder has a saved base indent, use it directly
+            const savedBaseIndent = rounder?.getBaseIndent?.()
+            if (savedBaseIndent !== null && savedBaseIndent !== undefined) {
+              // Apply saved base indent
+              const lines = entry.content.split("\n")
+              const adjustedLines = lines.map((line) => {
+                if (line.trim() === "") return line
+                return savedBaseIndent + line.trimStart()
+              })
+              contentToSet = adjustedLines.join("\n")
+              logger?.log("apply", "Applied saved base indent", {
+                baseIndent: savedBaseIndent,
+                originalLength: entry.content.length,
+                adjustedLength: contentToSet.length,
+              })
+            } else {
+              // Use normal smart indent adjustment
+              contentToSet = await adjustContentIndentSmart(
+                entry.content,
+                pasteInfo,
+                vimApi,
+                logger,
+              )
+            }
           }
 
           // Set register content BEFORE undo

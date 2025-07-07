@@ -31,6 +31,12 @@ describe("api toggleSmartIndent", () => {
     // Track applyHistoryEntry calls
     const applyHistoryEntrySpy = spy(() => Promise.resolve())
 
+    // Track setTemporarySmartIndent calls
+    const setTemporarySmartIndentSpy = spy((_value: boolean | null) => {})
+
+    // Track getTemporarySmartIndent calls
+    let temporarySmartIndent: boolean | null = null
+
     // Create mock rounder
     const mockRounder = {
       isActive: () => true,
@@ -48,6 +54,10 @@ describe("api toggleSmartIndent", () => {
       }),
       isFirstCycle: () => false,
       getUndoFilePath: () => "/tmp/undo.txt",
+      getTemporarySmartIndent: () => temporarySmartIndent,
+      setTemporarySmartIndent: setTemporarySmartIndentSpy,
+      getBaseIndent: () => null,
+      setBaseIndent: () => {},
     }
 
     const mockRounderManager = {
@@ -80,8 +90,13 @@ describe("api toggleSmartIndent", () => {
     // Toggle smart indent
     await api.toggleSmartIndent({})
 
-    // Should toggle to false
-    assertEquals(state.config.smart_indent, false)
+    // Should NOT change global config (remains true)
+    assertEquals(state.config.smart_indent, true)
+
+    // Should set temporary smart indent to false
+    assertSpyCall(setTemporarySmartIndentSpy, 0, {
+      args: [false],
+    })
 
     // Should call applyHistoryEntry with correct parameters
     assertSpyCall(applyHistoryEntrySpy, 0, {
@@ -105,11 +120,19 @@ describe("api toggleSmartIndent", () => {
       ],
     })
 
+    // Update mock state
+    temporarySmartIndent = false
+
     // Toggle again
     await api.toggleSmartIndent({})
 
-    // Should toggle back to true
+    // Global config should still be true
     assertEquals(state.config.smart_indent, true)
+
+    // Should set temporary smart indent to true
+    assertSpyCall(setTemporarySmartIndentSpy, 1, {
+      args: [true],
+    })
 
     // Should call applyHistoryEntry again
     assertEquals(applyHistoryEntrySpy.calls.length, 2)
@@ -121,6 +144,10 @@ describe("api toggleSmartIndent", () => {
     // Create mock rounder that is not active
     const mockRounder = {
       isActive: () => false,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => null,
+      setBaseIndent: () => {},
     }
 
     const mockRounderManager = {
@@ -201,6 +228,10 @@ describe("api toggleSmartIndent", () => {
       }),
       isFirstCycle: () => false,
       getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => null,
+      setBaseIndent: () => {},
     }
 
     const mockRounderManager = {
@@ -233,8 +264,8 @@ describe("api toggleSmartIndent", () => {
     // Toggle smart indent
     await api.toggleSmartIndent({})
 
-    // Should toggle the setting even though no entry to re-apply
-    assertEquals(state.config.smart_indent, !initialState)
+    // Should NOT change global config even though no entry to re-apply
+    assertEquals(state.config.smart_indent, initialState)
 
     // Should not call applyHistoryEntry due to missing entry
     assertEquals(applyHistoryEntrySpy.calls.length, 0)
@@ -260,6 +291,10 @@ describe("api toggleSmartIndent", () => {
       }),
       isFirstCycle: () => true, // First cycle
       getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => null,
+      setBaseIndent: () => {},
     }
 
     const mockRounderManager = {
@@ -310,5 +345,243 @@ describe("api toggleSmartIndent", () => {
         mockRounder,
       ],
     })
+  })
+
+  it("handles multiple toggles correctly", async () => {
+    const applyHistoryEntrySpy = spy(() => Promise.resolve())
+    const setTemporarySmartIndentSpy = spy((_value: boolean | null) => {})
+    let temporarySmartIndent: boolean | null = null
+
+    const mockRounder = {
+      isActive: () => true,
+      getCurrentEntry: () => ({
+        id: "1",
+        content: "    test content",
+        regtype: "V",
+        timestamp: 1000,
+      } as YankEntry),
+      getPasteInfo: () => ({
+        mode: "p" as const,
+        count: 1,
+        register: '"' as const,
+        visualMode: false,
+      }),
+      isFirstCycle: () => false,
+      getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => temporarySmartIndent,
+      setTemporarySmartIndent: (value: boolean | null) => {
+        setTemporarySmartIndentSpy(value)
+        temporarySmartIndent = value
+      },
+      getBaseIndent: () => "  ", // Base indent is 2 spaces
+      setBaseIndent: () => {},
+    }
+
+    const mockRounderManager = {
+      getRounder: () => Promise.resolve(mockRounder),
+    }
+
+    const state = createMockPluginState({
+      config: {
+        persist_path: "/tmp",
+        max_entries: 100,
+        max_data_size: 1024,
+        register_keys: "",
+        debug: true,
+        use_region_hl: false,
+        region_hl_groupname: "HaritsukeRegion",
+        smart_indent: true,
+      },
+      rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
+      pasteHandler: {
+        applyHistoryEntry: applyHistoryEntrySpy,
+      } as unknown as PluginState["pasteHandler"],
+    })
+
+    const denops = createMockDenops()
+    const api = createApi(denops, state)
+
+    // Toggle 1: true -> false
+    await api.toggleSmartIndent({})
+    assertSpyCall(setTemporarySmartIndentSpy, 0, { args: [false] })
+    assertEquals(applyHistoryEntrySpy.calls.length, 1)
+
+    // Toggle 2: false -> true
+    await api.toggleSmartIndent({})
+    assertSpyCall(setTemporarySmartIndentSpy, 1, { args: [true] })
+    assertEquals(applyHistoryEntrySpy.calls.length, 2)
+
+    // Toggle 3: true -> false
+    await api.toggleSmartIndent({})
+    assertSpyCall(setTemporarySmartIndentSpy, 2, { args: [false] })
+    assertEquals(applyHistoryEntrySpy.calls.length, 3)
+
+    // Toggle 4: false -> true
+    await api.toggleSmartIndent({})
+    assertSpyCall(setTemporarySmartIndentSpy, 3, { args: [true] })
+    assertEquals(applyHistoryEntrySpy.calls.length, 4)
+
+    // Base indent should be preserved across all toggles
+    assertEquals(mockRounder.getBaseIndent(), "  ")
+  })
+
+  it("handles empty content correctly", async () => {
+    const applyHistoryEntrySpy = spy(() => Promise.resolve())
+
+    const mockRounder = {
+      isActive: () => true,
+      getCurrentEntry: () => ({
+        id: "1",
+        content: "", // Empty content
+        regtype: "V",
+        timestamp: 1000,
+      } as YankEntry),
+      getPasteInfo: () => ({
+        mode: "p" as const,
+        count: 1,
+        register: '"' as const,
+        visualMode: false,
+      }),
+      isFirstCycle: () => false,
+      getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => null,
+      setBaseIndent: () => {},
+    }
+
+    const mockRounderManager = {
+      getRounder: () => Promise.resolve(mockRounder),
+    }
+
+    const state = createMockPluginState({
+      config: {
+        persist_path: "/tmp",
+        max_entries: 100,
+        max_data_size: 1024,
+        register_keys: "",
+        debug: true,
+        use_region_hl: false,
+        region_hl_groupname: "HaritsukeRegion",
+        smart_indent: true,
+      },
+      rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
+      pasteHandler: {
+        applyHistoryEntry: applyHistoryEntrySpy,
+      } as unknown as PluginState["pasteHandler"],
+    })
+
+    const denops = createMockDenops()
+    const api = createApi(denops, state)
+
+    // Should not throw error with empty content
+    await api.toggleSmartIndent({})
+    assertEquals(applyHistoryEntrySpy.calls.length, 1)
+  })
+
+  it("handles content with no leading indent", async () => {
+    const applyHistoryEntrySpy = spy(() => Promise.resolve())
+
+    const mockRounder = {
+      isActive: () => true,
+      getCurrentEntry: () => ({
+        id: "1",
+        content: "no indent here\nsecond line\nthird line",
+        regtype: "V",
+        timestamp: 1000,
+      } as YankEntry),
+      getPasteInfo: () => ({
+        mode: "p" as const,
+        count: 1,
+        register: '"' as const,
+        visualMode: false,
+      }),
+      isFirstCycle: () => false,
+      getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => "", // No base indent
+      setBaseIndent: () => {},
+    }
+
+    const mockRounderManager = {
+      getRounder: () => Promise.resolve(mockRounder),
+    }
+
+    const state = createMockPluginState({
+      config: {
+        persist_path: "/tmp",
+        max_entries: 100,
+        max_data_size: 1024,
+        register_keys: "",
+        debug: true,
+        use_region_hl: false,
+        region_hl_groupname: "HaritsukeRegion",
+        smart_indent: true,
+      },
+      rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
+      pasteHandler: {
+        applyHistoryEntry: applyHistoryEntrySpy,
+      } as unknown as PluginState["pasteHandler"],
+    })
+
+    const denops = createMockDenops()
+    const api = createApi(denops, state)
+
+    await api.toggleSmartIndent({})
+    assertEquals(applyHistoryEntrySpy.calls.length, 1)
+  })
+
+  it("handles mixed tabs and spaces correctly", async () => {
+    const applyHistoryEntrySpy = spy(() => Promise.resolve())
+
+    const mockRounder = {
+      isActive: () => true,
+      getCurrentEntry: () => ({
+        id: "1",
+        content: "\t  mixed indent\n\t\tmore tabs\n    spaces only",
+        regtype: "V",
+        timestamp: 1000,
+      } as YankEntry),
+      getPasteInfo: () => ({
+        mode: "p" as const,
+        count: 1,
+        register: '"' as const,
+        visualMode: false,
+      }),
+      isFirstCycle: () => false,
+      getUndoFilePath: () => null,
+      getTemporarySmartIndent: () => null,
+      setTemporarySmartIndent: () => {},
+      getBaseIndent: () => "\t", // Tab as base indent
+      setBaseIndent: () => {},
+    }
+
+    const mockRounderManager = {
+      getRounder: () => Promise.resolve(mockRounder),
+    }
+
+    const state = createMockPluginState({
+      config: {
+        persist_path: "/tmp",
+        max_entries: 100,
+        max_data_size: 1024,
+        register_keys: "",
+        debug: true,
+        use_region_hl: false,
+        region_hl_groupname: "HaritsukeRegion",
+        smart_indent: true,
+      },
+      rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
+      pasteHandler: {
+        applyHistoryEntry: applyHistoryEntrySpy,
+      } as unknown as PluginState["pasteHandler"],
+    })
+
+    const denops = createMockDenops()
+    const api = createApi(denops, state)
+
+    await api.toggleSmartIndent({})
+    assertEquals(applyHistoryEntrySpy.calls.length, 1)
   })
 })

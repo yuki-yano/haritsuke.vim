@@ -352,4 +352,130 @@ describe("rounder", () => {
       assertEquals(shouldAlsoBeNull, null)
     })
   })
+
+  describe("temporary smart indent settings", () => {
+    it("should store and retrieve temporary smart indent setting", () => {
+      const rounder = createRounder(null)
+
+      // Initial state should be null
+      assertEquals(rounder.getTemporarySmartIndent(), null)
+
+      // Set to false
+      rounder.setTemporarySmartIndent(false)
+      assertEquals(rounder.getTemporarySmartIndent(), false)
+
+      // Set to true
+      rounder.setTemporarySmartIndent(true)
+      assertEquals(rounder.getTemporarySmartIndent(), true)
+
+      // Set back to null
+      rounder.setTemporarySmartIndent(null)
+      assertEquals(rounder.getTemporarySmartIndent(), null)
+    })
+
+    it("should clear temporary smart indent on stop", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "p", count: 1, register: '"' })
+
+      // Set temporary smart indent
+      rounder.setTemporarySmartIndent(true)
+      assertEquals(rounder.getTemporarySmartIndent(), true)
+
+      // Stop should clear it
+      rounder.stop()
+      assertEquals(rounder.getTemporarySmartIndent(), null)
+    })
+  })
+
+  describe("base indent settings", () => {
+    it("should store and retrieve base indent", () => {
+      const rounder = createRounder(null)
+
+      // Initial state should be null
+      assertEquals(rounder.getBaseIndent(), null)
+
+      // Set base indent
+      rounder.setBaseIndent("  ")
+      assertEquals(rounder.getBaseIndent(), "  ")
+
+      // Update base indent
+      rounder.setBaseIndent("    ")
+      assertEquals(rounder.getBaseIndent(), "    ")
+
+      // Set to empty string
+      rounder.setBaseIndent("")
+      assertEquals(rounder.getBaseIndent(), "")
+
+      // Set to tab
+      rounder.setBaseIndent("\t")
+      assertEquals(rounder.getBaseIndent(), "\t")
+    })
+
+    it("should clear base indent on stop", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "p", count: 1, register: '"' })
+
+      // Set base indent
+      rounder.setBaseIndent("    ")
+      assertEquals(rounder.getBaseIndent(), "    ")
+
+      // Stop should clear it
+      rounder.stop()
+      assertEquals(rounder.getBaseIndent(), null)
+    })
+
+    it("should preserve base indent across navigation", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "p", count: 1, register: '"' })
+
+      // Set base indent
+      rounder.setBaseIndent("  ")
+
+      // Navigate through history
+      await rounder.previous()
+      assertEquals(rounder.getBaseIndent(), "  ")
+
+      await rounder.previous()
+      assertEquals(rounder.getBaseIndent(), "  ")
+
+      await rounder.next()
+      assertEquals(rounder.getBaseIndent(), "  ")
+
+      // Base indent should still be preserved
+      assertEquals(rounder.getBaseIndent(), "  ")
+    })
+  })
+
+  describe("temporary settings interaction", () => {
+    it("should maintain both temporary smart indent and base indent independently", async () => {
+      const rounder = createRounder(null)
+      const entries = createTestData()
+
+      await rounder.start(entries, { mode: "p", count: 1, register: '"' })
+
+      // Set both settings
+      rounder.setTemporarySmartIndent(true)
+      rounder.setBaseIndent("    ")
+
+      // Both should be independently retrievable
+      assertEquals(rounder.getTemporarySmartIndent(), true)
+      assertEquals(rounder.getBaseIndent(), "    ")
+
+      // Change one shouldn't affect the other
+      rounder.setTemporarySmartIndent(false)
+      assertEquals(rounder.getTemporarySmartIndent(), false)
+      assertEquals(rounder.getBaseIndent(), "    ")
+
+      // Change the other
+      rounder.setBaseIndent("  ")
+      assertEquals(rounder.getTemporarySmartIndent(), false)
+      assertEquals(rounder.getBaseIndent(), "  ")
+    })
+  })
 })

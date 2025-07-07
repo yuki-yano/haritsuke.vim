@@ -170,6 +170,18 @@ export const createApi = (denops: Denops, state: PluginState) => {
           clearHighlight,
         })
 
+        // Save base indent for toggle smart indent
+        if (state.config.smart_indent && state.vimApi) {
+          const regType = await state.vimApi.getregtype(data.register) as string
+          if (regType === "V") {
+            const currentLine = await state.vimApi.getline(".")
+            const baseIndentMatch = currentLine.match(/^(\s*)/)
+            const baseIndent = baseIndentMatch ? baseIndentMatch[1] : ""
+            rounder.setBaseIndent(baseIndent)
+            state.logger?.log("paste", "Saved base indent for rounder", { baseIndent })
+          }
+        }
+
         // Save undo file BEFORE paste
         const undoFilePath = await saveUndoFile(denops, state.logger)
         if (undoFilePath) {
@@ -363,11 +375,19 @@ export const createApi = (denops: Denops, state: PluginState) => {
           return
         }
 
-        // Toggle the smart_indent setting
-        state.config.smart_indent = !state.config.smart_indent
+        // Get current temporary setting or use global default
+        const currentTemporarySmartIndent = rounder.getTemporarySmartIndent()
+        const currentSmartIndent = currentTemporarySmartIndent !== null
+          ? currentTemporarySmartIndent
+          : state.config.smart_indent
+
+        // Toggle the temporary smart_indent setting
+        const newSmartIndent = !currentSmartIndent
+        rounder.setTemporarySmartIndent(newSmartIndent)
 
         state.logger?.log("toggle", "Toggled smart indent", {
-          smart_indent: state.config.smart_indent,
+          smart_indent: newSmartIndent,
+          isTemporary: true,
         })
 
         // Get current entry to re-apply with new setting
@@ -481,10 +501,10 @@ async function initializePlugin(
 
     state.pasteHandler = createPasteHandler(
       state.logger,
-      {
+      () => ({
         useRegionHl: state.config.use_region_hl ?? false,
         smartIndent: state.config.smart_indent ?? true,
-      },
+      }),
       vimApi,
       {
         applyHighlight: async (d, register) => await applyHighlight(d, state, register),
