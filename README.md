@@ -301,3 +301,4 @@ MIT
 
 - Powered by [denops.vim](https://github.com/vim-denops/denops.vim)
 - Name "haritsuke" (貼り付け) means "paste" in Japanese
+- Smart indent feature inspired by [nvim-pasta](https://github.com/hrsh7th/nvim-pasta)
