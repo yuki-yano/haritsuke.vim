@@ -99,6 +99,7 @@ describe("history navigation", () => {
         getPasteInfo: getPasteInfoSpy,
         getUndoFilePath: getUndoFilePathSpy,
         getCurrentEntry: spy(() => mockEntry),
+        getPositionInfo: spy(() => ({ currentIndex: 1, totalCount: 3 })),
       }
 
       const getRounderSpy = spy(() => Promise.resolve(mockRounder))
@@ -177,6 +178,7 @@ describe("history navigation", () => {
         next: nextSpy,
         getPasteInfo: getPasteInfoSpy,
         getUndoFilePath: getUndoFilePathSpy,
+        getPositionInfo: spy(() => ({ currentIndex: 2, totalCount: 3 })),
       }
 
       const getRounderSpy = spy(() => Promise.resolve(mockRounder))

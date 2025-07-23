@@ -67,6 +67,12 @@ export const navigatePrev = async (
           rounder.getUndoFilePath(),
           rounder,
         )
+
+        // Show position info
+        const posInfo = rounder.getPositionInfo()
+        if (posInfo) {
+          await denops.cmd(`echo "[haritsuke] ${posInfo.currentIndex}/${posInfo.totalCount}"`)
+        }
       } else {
         state.logger?.log("cycle", "cyclePrev no result")
       }
@@ -124,6 +130,12 @@ export const navigateNext = async (
           rounder.getUndoFilePath(),
           rounder,
         )
+
+        // Show position info
+        const posInfo = rounder.getPositionInfo()
+        if (posInfo) {
+          await denops.cmd(`echo "[haritsuke] ${posInfo.currentIndex}/${posInfo.totalCount}"`)
+        }
       } else {
         state.logger?.log("cycle", "cycleNext no result")
       }

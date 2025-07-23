@@ -52,6 +52,11 @@ export type Rounder = {
     motionWise?: string
     deletedRange?: { start: number[]; end: number[] }
   } | null
+  // Get position info
+  getPositionInfo: () => {
+    currentIndex: number
+    totalCount: number
+  } | null
 }
 
 export const createRounder = (logger: DebugLogger | null): Rounder => {
@@ -285,6 +290,16 @@ export const createRounder = (logger: DebugLogger | null): Rounder => {
     },
 
     getReplaceInfo: () => replaceInfo,
+
+    getPositionInfo: () => {
+      if (!active || entries.length === 0) {
+        return null
+      }
+      return {
+        currentIndex: currentIndex + 1, // 1-based for display
+        totalCount: entries.length,
+      }
+    },
   }
 }
 

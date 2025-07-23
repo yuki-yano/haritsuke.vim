@@ -4,7 +4,7 @@
  */
 
 import type { Denops } from "../deps/denops.ts"
-import { fn, vars } from "../deps/denops.ts"
+import { fn, vars, helpers } from "../deps/denops.ts"
 
 /**
  * Vim API interface for dependency injection
@@ -39,6 +39,9 @@ export type VimApi = {
   getGlobalVar: (name: string) => Promise<unknown>
   getwinvar: (winnr: number, varname: string) => Promise<unknown>
   getbufvar: (bufnr: number, varname: string) => Promise<unknown>
+
+  // Echo operations
+  echo: (message: string) => Promise<void>
 }
 
 /**
@@ -109,6 +112,10 @@ export const createVimApi = (denops: Denops): VimApi => {
     getbufvar: async (bufnr: number, varname: string) => {
       return await fn.getbufvar(denops, bufnr, varname)
     },
+
+    echo: async (message: string) => {
+      await helpers.echo(denops, message)
+    },
   }
 }
 
@@ -150,6 +157,7 @@ export const createMockVimApi = (overrides: Partial<VimApi> = {}): VimApi => {
     getGlobalVar: () => Promise.resolve(undefined),
     getwinvar: () => Promise.resolve(0),
     getbufvar: () => Promise.resolve(""),
+    echo: () => Promise.resolve(),
     ...overrides,
   }
 }
