@@ -47,16 +47,17 @@ export const deletionMovesTheCursor = async (
   motionEndPos: number[],
   vimApi: VimApi,
   preDeleteBufferEndLine?: number,
+  preDeleteBufferEndCol?: number,
 ): Promise<boolean> => {
   // Get buffer end position (use pre-delete value if provided)
   const bufferEndLine = preDeleteBufferEndLine ?? await vimApi.line("$")
-  const bufferEndCol = await vimApi.eval(`strlen(getline(${bufferEndLine}))`) as number
+  const bufferEndCol = preDeleteBufferEndCol ?? await vimApi.eval(`strlen(getline(${bufferEndLine}))`) as number
 
   const motionEndLine = motionEndPos[1]
   const motionEndCol = motionEndPos[2]
 
   if (motionWise === "char") {
-    // Get last column of the motion end line
+    // Get last column of the motion end line (post-delete state)
     const motionEndLastCol = await vimApi.eval(`strlen(getline(${motionEndLine}))`) as number
 
     // Cursor moves if:
@@ -81,11 +82,18 @@ const getPasteCommand = async (
   endPos: number[],
   vimApi: VimApi,
   preDeleteBufferEndLine?: number,
+  preDeleteBufferEndCol?: number,
 ): Promise<string> => {
   // Use vim-operator-replace logic for both visual and normal modes
   // If deletion moves cursor, use p (paste after)
   // If deletion doesn't move cursor, use P (paste before)
-  const movesCursor = await deletionMovesTheCursor(motionWise, endPos, vimApi, preDeleteBufferEndLine)
+  const movesCursor = await deletionMovesTheCursor(
+    motionWise,
+    endPos,
+    vimApi,
+    preDeleteBufferEndLine,
+    preDeleteBufferEndCol,
+  )
   return movesCursor ? "p" : "P"
 }
 
@@ -103,8 +111,9 @@ export const executeReplaceOperator = async (
   const startPos = await vimApi.getpos(startMark)
   const endPos = await vimApi.getpos(endMark)
 
-  // Get buffer end line before delete for paste command decision
+  // Get buffer end position before delete for paste command decision
   const bufferEndLine = await vimApi.line("$")
+  const bufferEndCol = await vimApi.eval(`strlen(getline(${bufferEndLine}))`) as number
 
   // Check for empty region
   if (isEmptyRegion(startPos, endPos)) {
@@ -142,12 +151,13 @@ export const executeReplaceOperator = async (
   }
 
   // Paste from register as a separate undo block
-  // Pass the original buffer end line (before delete) for correct paste command decision
+  // Pass the original buffer end position (before delete) for correct paste command decision
   const pasteCmd = await getPasteCommand(
     options.motionWise,
     endPos,
     vimApi,
     bufferEndLine,
+    bufferEndCol,
   )
 
   // Check register type to handle mixed-mode operations correctly

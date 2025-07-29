@@ -4,7 +4,7 @@
  */
 
 import type { Denops } from "../deps/denops.ts"
-import { fn, vars, helpers } from "../deps/denops.ts"
+import { fn, helpers, vars } from "../deps/denops.ts"
 
 /**
  * Vim API interface for dependency injection
