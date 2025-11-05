@@ -711,8 +711,11 @@ async function stopRounderWithCleanup(
       await Deno.remove(undoFilePath)
       state.logger?.log("undo", "Deleted undo file", { undoFilePath })
     } catch (e) {
-      // File might already be deleted
-      state.logger?.error("undo", "Failed to delete undo file", e)
+      if (e instanceof Deno.errors.NotFound) {
+        state.logger?.log("undo", "Undo file already removed", { undoFilePath })
+      } else {
+        state.logger?.error("undo", "Failed to delete undo file", e)
+      }
     }
   }
 

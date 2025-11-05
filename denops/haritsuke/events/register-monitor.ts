@@ -156,7 +156,11 @@ export const createRegisterMonitor = (
                   await fileSystemApi.remove(undoFilePath)
                   logger?.log("undo", "Deleted undo file", { undoFilePath })
                 } catch (e) {
-                  logger?.error("undo", "Failed to delete undo file", e)
+                  if (e instanceof Deno.errors.NotFound) {
+                    logger?.log("undo", "Undo file already removed", { undoFilePath })
+                  } else {
+                    logger?.error("undo", "Failed to delete undo file", e)
+                  }
                 }
               }
               rounder.stop()
