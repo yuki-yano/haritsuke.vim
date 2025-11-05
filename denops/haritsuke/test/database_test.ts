@@ -10,12 +10,13 @@ const createTestEntry = (overrides: Partial<Omit<YankEntry, "id" | "size">> = {}
   content: "test content",
   regtype: "v" as const,
   timestamp: Date.now(),
+  register: '"',
   ...overrides,
 })
 
 const createTestDatabase = async (): Promise<{ db: YankDatabase; tempDir: string }> => {
   const tempDir = await Deno.makeTempDir()
-  const db = createYankDatabase(tempDir, 100)
+  const db = createYankDatabase(tempDir, { maxHistory: 100 })
   await db.init()
   return { db, tempDir }
 }
@@ -60,7 +61,7 @@ describe("YankDatabase", () => {
       await Deno.writeTextFile(`${tempDir}/haritsuke.db`, "corrupted data")
 
       // Should handle corruption and recreate
-      const newDb = createYankDatabase(tempDir, 100)
+      const newDb = createYankDatabase(tempDir, { maxHistory: 100 })
       await newDb.init()
 
       const recent = newDb.getRecent()
@@ -74,7 +75,7 @@ describe("YankDatabase", () => {
       await cleanupTestDatabase(tempDir)
 
       const newTempDir = `${tempDir}/nested/path`
-      const newDb = createYankDatabase(newTempDir, 100)
+      const newDb = createYankDatabase(newTempDir, { maxHistory: 100 })
       await newDb.init()
 
       const recent = newDb.getRecent()
@@ -95,6 +96,7 @@ describe("YankDatabase", () => {
       assertEquals(result.regtype, entry.regtype)
       assertEquals(result.timestamp, entry.timestamp)
       assertEquals(result.size, new TextEncoder().encode(entry.content).length)
+      assertEquals(result.register, entry.register)
     })
 
     it("should add entry with optional fields", async () => {
@@ -103,6 +105,7 @@ describe("YankDatabase", () => {
         sourceFile: "/path/to/file.ts",
         sourceLine: 42,
         sourceFiletype: "typescript",
+        register: "a",
       })
       const result = await db.add(entry)
 
@@ -110,6 +113,7 @@ describe("YankDatabase", () => {
       assertEquals(result.sourceFile, "/path/to/file.ts")
       assertEquals(result.sourceLine, 42)
       assertEquals(result.sourceFiletype, "typescript")
+      assertEquals(result.register, "a")
     })
 
     it("should reject content exceeding size limit", async () => {
@@ -118,6 +122,22 @@ describe("YankDatabase", () => {
 
       await assertRejects(
         async () => await db.add(entry),
+        Error,
+        "Content too large",
+      )
+    })
+
+    it("should respect custom max_data_size configuration", async () => {
+      db.close()
+      await cleanupTestDatabase(tempDir)
+
+      tempDir = await Deno.makeTempDir()
+      db = createYankDatabase(tempDir, { maxHistory: 100, maxDataSize: 10 })
+      await db.init()
+
+      await db.add(createTestEntry({ content: "a".repeat(10) }))
+      await assertRejects(
+        async () => await db.add(createTestEntry({ content: "a".repeat(11) })),
         Error,
         "Content too large",
       )
@@ -154,7 +174,7 @@ describe("YankDatabase", () => {
 
       const result = await createTestDatabase()
       tempDir = result.tempDir
-      db = createYankDatabase(tempDir, 5)
+      db = createYankDatabase(tempDir, { maxHistory: 5 })
       await db.init()
 
       // Add more entries than limit
@@ -200,11 +220,20 @@ describe("YankDatabase", () => {
       assertEquals(recentAll.length, 10)
     })
 
+    it("should include register information in results", async () => {
+      await db.add(createTestEntry({ content: "reg-a", register: "a", timestamp: 1 }))
+      await db.add(createTestEntry({ content: "reg-b", register: "b", timestamp: 2 }))
+
+      const recent = db.getRecent()
+      assertEquals(recent[0].register, "b")
+      assertEquals(recent[1].register, "a")
+    })
+
     it("should not exceed maxHistory even with high limit", async () => {
       db.close()
 
       // Create db with maxHistory of 3
-      db = createYankDatabase(tempDir, 3)
+      db = createYankDatabase(tempDir, { maxHistory: 3 })
       await db.init()
 
       for (let i = 0; i < 5; i++) {
@@ -318,7 +347,7 @@ describe("YankDatabase", () => {
       // Make directory read-only
       await Deno.chmod(tempDir, 0o444)
 
-      const newDb = createYankDatabase(tempDir, 100)
+      const newDb = createYankDatabase(tempDir, { maxHistory: 100 })
 
       try {
         await assertRejects(
@@ -347,7 +376,7 @@ describe("YankDatabase", () => {
       db.close()
 
       // Reopen database
-      const newDb = createYankDatabase(tempDir, 100)
+      const newDb = createYankDatabase(tempDir, { maxHistory: 100 })
       await newDb.init()
 
       const recent = newDb.getRecent()

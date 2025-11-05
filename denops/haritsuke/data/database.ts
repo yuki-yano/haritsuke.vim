@@ -4,7 +4,7 @@ import { join } from "../deps/std.ts"
 import { ensureDir } from "../deps/std.ts"
 import type { RegisterType, YankEntry } from "../types.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
-import { DATABASE, SQLITE_PRAGMA } from "../constants.ts"
+import { DATABASE, SPECIAL_REGISTERS, SQLITE_PRAGMA } from "../constants.ts"
 import { calculateContentSize, validateContentSize } from "../utils/validation.ts"
 import { withErrorHandling, withErrorHandlingSync } from "../utils/error-handling.ts"
 
@@ -21,6 +21,7 @@ type YankHistoryRow = {
   source_file: string | null
   source_line: number | null
   source_filetype: string | null
+  register: string | null
   created_at?: number
   accessed_at?: number | null
   access_count?: number
@@ -53,6 +54,11 @@ export type YankDatabase = {
   close: () => void
 }
 
+export type YankDatabaseOptions = {
+  maxHistory?: number
+  maxDataSize?: number
+}
+
 /**
  * Yank history persistence management using SQLite
  *
@@ -62,9 +68,12 @@ export type YankDatabase = {
  */
 export const createYankDatabase = (
   dataDir: string,
-  maxHistory: number = 100,
+  options: YankDatabaseOptions = {},
   logger: DebugLogger | null = null,
 ): YankDatabase => {
+  const maxHistory = options.maxHistory ?? 100
+  const maxDataSize = options.maxDataSize ?? DATABASE.MAX_CONTENT_SIZE
+
   // Private state
   let db: DatabaseSync | undefined
   const statements: {
@@ -86,6 +95,7 @@ export const createYankDatabase = (
         content TEXT NOT NULL,              -- Yanked content
         regtype TEXT NOT NULL,              -- Register type (v, V, b)
         blockwidth INTEGER,                 -- Width for block selection
+        register TEXT NOT NULL DEFAULT '"', -- Register name
         
         -- Metadata
         timestamp INTEGER NOT NULL,         -- Yank timestamp (milliseconds)
@@ -122,6 +132,12 @@ export const createYankDatabase = (
         ('schema_version', '1'),
         ('max_history', '${maxHistory}');
     `)
+
+    const columns = db!.prepare(`PRAGMA table_info(yank_history)`).all() as Array<{ name: string }>
+    const hasRegisterColumn = columns.some((column) => column.name === "register")
+    if (!hasRegisterColumn) {
+      db!.exec(`ALTER TABLE yank_history ADD COLUMN register TEXT NOT NULL DEFAULT '"'`)
+    }
   }
 
   /**
@@ -132,15 +148,15 @@ export const createYankDatabase = (
     // Insert new entry (allow duplicates)
     statements.insert = db!.prepare(`
       INSERT INTO yank_history 
-      (content, regtype, blockwidth, timestamp, size, source_file, source_line, source_filetype)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (content, regtype, blockwidth, timestamp, size, source_file, source_line, source_filetype, register)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 
     // Get latest N records
     statements.selectRecent = db!.prepare(`
       SELECT 
         id, content, regtype, blockwidth, timestamp, size,
-        source_file, source_line, source_filetype
+        source_file, source_line, source_filetype, register
       FROM yank_history
       ORDER BY timestamp DESC
       LIMIT ?
@@ -183,6 +199,7 @@ export const createYankDatabase = (
       sourceFile: row.source_file ?? undefined,
       sourceLine: row.source_line ?? undefined,
       sourceFiletype: row.source_filetype ?? undefined,
+      register: row.register ?? SPECIAL_REGISTERS.UNNAMED,
     }
   }
 
@@ -272,8 +289,8 @@ export const createYankDatabase = (
       const size = calculateContentSize(entry.content)
 
       // Size limit check
-      if (!validateContentSize(entry.content)) {
-        throw new Error(`Content too large: ${size} bytes (max: ${DATABASE.MAX_CONTENT_SIZE})`)
+      if (!validateContentSize(entry.content, maxDataSize)) {
+        throw new Error(`Content too large: ${size} bytes (max: ${maxDataSize})`)
       }
 
       try {
@@ -286,6 +303,7 @@ export const createYankDatabase = (
           entry.sourceFile || null,
           entry.sourceLine || null,
           entry.sourceFiletype || null,
+          entry.register || SPECIAL_REGISTERS.UNNAMED,
         )
 
         // Delete old entries if max entries exceeded

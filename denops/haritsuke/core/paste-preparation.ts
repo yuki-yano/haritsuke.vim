@@ -7,6 +7,7 @@ import type { Denops } from "../deps/denops.ts"
 import { fn } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Rounder } from "./rounder.ts"
+import { SPECIAL_REGISTERS } from "../constants.ts"
 
 export type PreparePasteData = {
   mode: string
@@ -23,11 +24,12 @@ export type PreparedPasteInfo = PreparePasteData & {
  * Generate paste command based on mode and register
  */
 export const generatePasteCommand = (data: PreparePasteData): string => {
+  const countPart = data.count > 1 ? String(data.count) : ""
   if (data.vmode === "v" && data.register === '"') {
-    return `normal! gv${data.mode}`
+    return `normal! gv${countPart}${data.mode}`
   } else {
     const prefix = data.vmode === "v" ? "gv" : ""
-    return `normal! ${prefix}"${data.register}${data.count}${data.mode}`
+    return `normal! ${prefix}"${data.register}${countPart}${data.mode}`
   }
 }
 
@@ -79,8 +81,14 @@ export const initializeRounderForPaste = async (
   }
 
   // Initialize rounder with entries
-  const entries = state.cache!.getAll()
-  await rounder.start(entries, {
+  const allEntries = state.cache!.getAll()
+  const targetRegister = data.register || SPECIAL_REGISTERS.UNNAMED
+  const filteredEntries = targetRegister === SPECIAL_REGISTERS.UNNAMED
+    ? allEntries
+    : allEntries.filter((entry) => (entry.register ?? SPECIAL_REGISTERS.UNNAMED) === targetRegister)
+  const rounderEntries = filteredEntries.length > 0 ? filteredEntries : allEntries
+
+  await rounder.start(rounderEntries, {
     mode: data.mode as "p" | "P" | "gp" | "gP",
     count: data.count,
     register: data.register,

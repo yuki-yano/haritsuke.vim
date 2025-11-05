@@ -94,6 +94,7 @@ describe("createRegisterMonitor", () => {
     assertEquals(cache.size, 1)
     const newEntries = cache.getAll()
     assertEquals(newEntries[0].content, "new content")
+    assertEquals(newEntries[0].register, '"')
 
     // Same content check - should not add duplicate
     await registerMonitor.checkChanges({} as Denops)
@@ -211,6 +212,69 @@ describe("createRegisterMonitor", () => {
     assertSpyCalls(mockCallbacks.clearHighlight as ReturnType<typeof spy>, 1)
   })
 
+  it("tracks configured registers independently", async () => {
+    const database = createMockDatabase()
+    const cache = createYankCache()
+    const rounderManager = createMockRounderManager()
+
+    const registerContent: Record<string, string | string[]> = {
+      '"': "",
+      a: "",
+      b: "",
+    }
+
+    let currentRegister = '"'
+
+    const mockVimApi = createMockVimApi({
+      bufnr: () => Promise.resolve(1),
+      getreg: (reg: string) => Promise.resolve(registerContent[reg] || ""),
+      getregtype: () => Promise.resolve("v"),
+      eval: (expr: string) => {
+        if (expr === "get(v:event, 'regname', '\"')") {
+          return Promise.resolve(currentRegister)
+        }
+        return Promise.resolve(undefined)
+      },
+    })
+
+    const mockFileSystemApi = createMockFileSystemApi()
+    const mockCallbacks: RegisterMonitorCallbacks = {
+      clearHighlight: spy(() => Promise.resolve()),
+    }
+
+    const registerMonitor = createRegisterMonitor(
+      database,
+      cache,
+      rounderManager,
+      null,
+      {
+        stopCachingVariable: "_haritsuke_stop_caching",
+        registerKeys: '"ab',
+      },
+      mockVimApi,
+      mockFileSystemApi,
+      mockCallbacks,
+    )
+
+    // Initialize unnamed register
+    await registerMonitor.checkChanges({} as Denops)
+
+    currentRegister = "a"
+    registerContent.a = "alpha"
+    await registerMonitor.checkChanges({} as Denops, true)
+
+    currentRegister = "b"
+    registerContent.b = "bravo"
+    await registerMonitor.checkChanges({} as Denops, true)
+
+    const entries = cache.getAll()
+    assertEquals(entries.length, 2)
+    assertEquals(entries[0].register, "b")
+    assertEquals(entries[0].content, "bravo")
+    assertEquals(entries[1].register, "a")
+    assertEquals(entries[1].content, "alpha")
+  })
+
   it("handles array register content", async () => {
     const database = createMockDatabase()
     const cache = createYankCache()
@@ -256,6 +320,7 @@ describe("createRegisterMonitor", () => {
     const entries = cache.getAll()
     assertEquals(entries[0].content, "different\ncontent")
     assertEquals(entries[0].regtype, "V")
+    assertEquals(entries[0].register, '"')
   })
 
   it("reset clears last content", () => {

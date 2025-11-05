@@ -11,9 +11,11 @@ import type { DebugLogger } from "../utils/debug-logger.ts"
 import type { FileSystemApi, VimApi } from "../vim/vim-api.ts"
 import { parseRegtype } from "../utils/utils.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
+import { SPECIAL_REGISTERS } from "../constants.ts"
 
 export type RegisterMonitorConfig = {
   stopCachingVariable: string
+  registerKeys?: string
 }
 
 export type RegisterMonitor = {
@@ -34,13 +36,59 @@ export const createRegisterMonitor = (
   cache: YankCache,
   rounderManager: RounderManager,
   logger: DebugLogger | null,
-  _config: RegisterMonitorConfig,
+  config: RegisterMonitorConfig,
   vimApi: VimApi,
   fileSystemApi: FileSystemApi,
   callbacks: RegisterMonitorCallbacks,
 ): RegisterMonitor => {
-  let lastRegisterContent = ""
-  let isInitialized = false
+  const trackedRegisters = (() => {
+    const keys = config.registerKeys ?? ""
+    const registers = keys.length > 0 ? Array.from(keys) : [SPECIAL_REGISTERS.UNNAMED]
+    const set = new Set<string>(registers)
+    // Always track unnamed register to maintain backwards compatibility
+    set.add(SPECIAL_REGISTERS.UNNAMED)
+    return set
+  })()
+
+  type RegisterState = {
+    initialized: boolean
+    lastContent: string
+  }
+
+  const registerStates = new Map<string, RegisterState>()
+
+  const getRegisterState = (register: string): RegisterState => {
+    if (!registerStates.has(register)) {
+      registerStates.set(register, { initialized: false, lastContent: "" })
+    }
+    return registerStates.get(register)!
+  }
+
+  const resolveEventRegister = async (isFromTextYankPost: boolean): Promise<string> => {
+    if (!isFromTextYankPost) {
+      return SPECIAL_REGISTERS.UNNAMED
+    }
+
+    try {
+      const regname = await vimApi.eval("get(v:event, 'regname', '\"')") as unknown
+      if (typeof regname === "string" && regname.length > 0) {
+        return regname
+      }
+    } catch (error) {
+      logger?.error("register", "Failed to resolve yank register from v:event", error)
+    }
+    return SPECIAL_REGISTERS.UNNAMED
+  }
+
+  const stringifyRegisterContent = (content: unknown): string => {
+    if (Array.isArray(content)) {
+      return content.join("\n")
+    }
+    if (typeof content === "string") {
+      return content
+    }
+    return ""
+  }
 
   return {
     checkChanges: async (denops: Denops, isFromTextYankPost = false): Promise<void> => {
@@ -51,31 +99,26 @@ export const createRegisterMonitor = (
 
       await withErrorHandling(
         async () => {
-          // Get current register content
-          const content = await vimApi.getreg('"')
-          const contentStr = Array.isArray(content) ? content.join("\n") : content || ""
+          const register = await resolveEventRegister(isFromTextYankPost)
+          if (!trackedRegisters.has(register)) {
+            logger?.log("register", "Skipping untracked register", { register })
+            return
+          }
 
-          // Skip empty content
+          const registerState = getRegisterState(register)
+          const rawContent = await vimApi.getreg(register)
+          const contentStr = stringifyRegisterContent(rawContent)
+
           if (!contentStr) {
             return
           }
 
-          // Handle initialization
-          if (!isInitialized) {
-            isInitialized = true
-
-            if (isFromTextYankPost) {
-              // If called from TextYankPost, this is a real yank that should be saved
-              logger?.log("register", "First yank detected via TextYankPost", {
-                content: contentStr.slice(0, 30),
-                contentLength: contentStr.length,
-              })
-              // Don't update lastRegisterContent yet - let it be updated after saving
-              // Continue to save this yank
-            } else {
-              // If called from other events (e.g., initialization), skip saving
-              lastRegisterContent = contentStr
-              logger?.log("register", "Initialized with current register content", {
+          if (!registerState.initialized) {
+            registerState.initialized = true
+            if (!isFromTextYankPost) {
+              registerState.lastContent = contentStr
+              logger?.log("register", "Initialized register content", {
+                register,
                 content: contentStr.slice(0, 30),
                 contentLength: contentStr.length,
               })
@@ -84,24 +127,20 @@ export const createRegisterMonitor = (
           }
 
           logger?.log("register", "checkRegisterChanges content", {
+            register,
             content: contentStr.slice(0, 30),
-            lastContent: lastRegisterContent.slice(0, 30),
-            isArray: Array.isArray(content),
+            lastContent: registerState.lastContent.slice(0, 30),
+            isArray: Array.isArray(rawContent),
             contentLength: contentStr.length,
           })
 
-          // Check if content has changed
-          if (contentStr === lastRegisterContent) {
+          if (contentStr === registerState.lastContent) {
             return
           }
 
-          // Update last content
-          lastRegisterContent = contentStr
+          registerState.lastContent = contentStr
+          const regtype = await vimApi.getregtype(register)
 
-          // Get register type
-          const regtype = await vimApi.getregtype('"')
-
-          // Check if rounder is active and stop it if new yank detected
           let rounderWasActive = false
           if (rounderManager) {
             const bufnr = await vimApi.bufnr("%")
@@ -109,45 +148,44 @@ export const createRegisterMonitor = (
 
             if (rounder.isActive()) {
               rounderWasActive = true
-              logger?.log("register", "New yank detected during history cycling")
+              logger?.log("register", "New yank detected during history cycling", { register })
 
-              // Delete undo file if exists
               const undoFilePath = rounder.getUndoFilePath()
               if (undoFilePath) {
                 try {
                   await fileSystemApi.remove(undoFilePath)
                   logger?.log("undo", "Deleted undo file", { undoFilePath })
                 } catch (e) {
-                  // File might already be deleted
                   logger?.error("undo", "Failed to delete undo file", e)
                 }
               }
               rounder.stop()
-              // Clear highlight when rounder stops
               await callbacks.clearHighlight(denops)
               logger?.log("rounder", "Rounder stopped due to new yank")
             }
           }
 
-          // Add to database and cache
+          const timestamp = Date.now()
           logger?.log("register", "Adding new yank to database", {
+            register,
             content: contentStr.trim().slice(0, 50).replace(/\n/g, "\\n"),
             regtype,
-            timestamp: Date.now(),
+            timestamp,
             wasHistoryCycling: rounderWasActive,
           })
 
           const entry = await database.add({
             content: contentStr,
             regtype: parseRegtype(regtype),
-            timestamp: Date.now(),
-            register: '"',
+            timestamp,
+            register,
           })
 
           cache.add(entry)
 
           logger?.log("register", "New yank detected and stored", {
             id: entry.id,
+            register,
             content: contentStr.trim().slice(0, 50).replace(/\n/g, "\\n"),
             timestamp: entry.timestamp,
             cacheSize: cache.size,
@@ -155,6 +193,7 @@ export const createRegisterMonitor = (
             topCacheEntries: cache.getRecent(5).map((e, i) => ({
               index: i,
               id: e.id,
+              register: e.register,
               content: e.content.trim().slice(0, 30).replace(/\n/g, "\\n"),
             })),
           })
@@ -165,12 +204,11 @@ export const createRegisterMonitor = (
     },
 
     getLastContent: (): string => {
-      return lastRegisterContent
+      return registerStates.get(SPECIAL_REGISTERS.UNNAMED)?.lastContent ?? ""
     },
 
     reset: (): void => {
-      lastRegisterContent = ""
-      isInitialized = false
+      registerStates.clear()
     },
   }
 }
