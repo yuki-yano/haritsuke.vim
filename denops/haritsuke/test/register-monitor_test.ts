@@ -267,12 +267,22 @@ describe("createRegisterMonitor", () => {
     registerContent.b = "bravo"
     await registerMonitor.checkChanges({} as Denops, true)
 
-    const entries = cache.getAll()
+    let entries = cache.getAll()
     assertEquals(entries.length, 2)
     assertEquals(entries[0].register, "b")
     assertEquals(entries[0].content, "bravo")
     assertEquals(entries[1].register, "a")
     assertEquals(entries[1].content, "alpha")
+
+    // Append to register a using uppercase (\"A) should still be tracked as register \"a\"
+    currentRegister = "A"
+    registerContent.a = "alpha appended"
+    await registerMonitor.checkChanges({} as Denops, true)
+
+    entries = cache.getAll()
+    assertEquals(entries.length, 3)
+    assertEquals(entries[0].register, "a")
+    assertEquals(entries[0].content, "alpha appended")
   })
 
   it("handles array register content", async () => {

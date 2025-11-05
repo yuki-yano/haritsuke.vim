@@ -42,7 +42,14 @@ export const createRegisterMonitor = (
   callbacks: RegisterMonitorCallbacks,
 ): RegisterMonitor => {
   const trackedRegisters = (() => {
-    const set = new Set(Array.from(config.registerKeys ?? ""))
+    const set = new Set<string>()
+    for (const key of Array.from(config.registerKeys ?? "")) {
+      if (/^[a-z]$/i.test(key)) {
+        set.add(key.toLowerCase())
+      } else {
+        set.add(key)
+      }
+    }
     // Always track unnamed register to maintain backwards compatibility
     set.add(SPECIAL_REGISTERS.UNNAMED)
     return set
@@ -97,9 +104,14 @@ export const createRegisterMonitor = (
 
       await withErrorHandling(
         async () => {
-          const register = await resolveEventRegister(isFromTextYankPost)
+          const resolvedRegister = await resolveEventRegister(isFromTextYankPost)
+          const register = /^[a-z]$/i.test(resolvedRegister) ? resolvedRegister.toLowerCase() : resolvedRegister
+
           if (!trackedRegisters.has(register)) {
-            logger?.log("register", "Skipping untracked register", { register })
+            logger?.log("register", "Skipping untracked register", {
+              register,
+              resolvedRegister,
+            })
             return
           }
 
