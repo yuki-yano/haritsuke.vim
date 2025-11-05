@@ -230,7 +230,7 @@ describe("createRegisterMonitor", () => {
       getreg: (reg: string) => Promise.resolve(registerContent[reg] || ""),
       getregtype: () => Promise.resolve("v"),
       eval: (expr: string) => {
-        if (expr === "get(v:event, 'regname', '\"')") {
+        if (expr === "get(v:event, 'regname', '')") {
           return Promise.resolve(currentRegister)
         }
         return Promise.resolve(undefined)

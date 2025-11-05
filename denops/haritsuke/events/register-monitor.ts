@@ -42,9 +42,7 @@ export const createRegisterMonitor = (
   callbacks: RegisterMonitorCallbacks,
 ): RegisterMonitor => {
   const trackedRegisters = (() => {
-    const keys = config.registerKeys ?? ""
-    const registers = keys.length > 0 ? Array.from(keys) : [SPECIAL_REGISTERS.UNNAMED]
-    const set = new Set<string>(registers)
+    const set = new Set(Array.from(config.registerKeys ?? ""))
     // Always track unnamed register to maintain backwards compatibility
     set.add(SPECIAL_REGISTERS.UNNAMED)
     return set
@@ -70,8 +68,8 @@ export const createRegisterMonitor = (
     }
 
     try {
-      const regname = await vimApi.eval("get(v:event, 'regname', '\"')") as unknown
-      if (typeof regname === "string" && regname.length > 0) {
+      const regname = await vimApi.eval(`get(v:event, 'regname', '')`) as unknown
+      if (typeof regname === "string" && regname.length === 1) {
         return regname
       }
     } catch (error) {
