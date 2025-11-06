@@ -30,6 +30,7 @@ export const createMockPluginState = (overrides?: Partial<PluginState>): PluginS
           regtype: "v" as const,
           timestamp: Date.now(),
           size: 4,
+          register: '"',
         })
       ),
       getRecent: spy(() => []),

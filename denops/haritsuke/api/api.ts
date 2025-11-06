@@ -56,14 +56,22 @@ export const createApi = (denops: Denops, state: PluginState) => {
       Object.assign(state.config, configData)
     }
 
-    // Initialize if not already done
-    if (!state.database) {
-      await initializePlugin(denops, state)
+    const hadDatabase = !!state.database
+    if (hadDatabase) {
+      state.logger?.log(
+        "init",
+        "Reinitializing plugin with updated config",
+        state.config,
+      )
+      await teardownPlugin(denops, state)
+      state.reset()
     }
+
+    await initializePlugin(denops, state)
 
     state.logger?.log(
       "init",
-      "Plugin initialized/updated with config",
+      hadDatabase ? "Plugin reinitialized with config" : "Plugin initialized with config",
       state.config,
     )
   }
@@ -471,6 +479,33 @@ export const createApi = (denops: Denops, state: PluginState) => {
   }
 }
 
+async function teardownPlugin(
+  denops: Denops,
+  state: PluginState,
+): Promise<void> {
+  if (state.rounderManager) {
+    state.rounderManager.clear()
+  }
+
+  if (state.registerMonitor) {
+    state.registerMonitor.reset()
+  }
+
+  if (state.highlightManager) {
+    await withErrorHandling(
+      async () => {
+        await state.highlightManager!.clear(denops)
+      },
+      "teardown highlight clear",
+      state.logger,
+    )
+  }
+
+  if (state.database) {
+    state.database.close()
+  }
+}
+
 async function initializePlugin(
   denops: Denops,
   state: PluginState,
@@ -485,7 +520,14 @@ async function initializePlugin(
       "haritsuke",
     )
 
-    state.database = createYankDatabase(dataDir, state.config.max_entries, state.logger)
+    state.database = createYankDatabase(
+      dataDir,
+      {
+        maxHistory: state.config.max_entries,
+        maxDataSize: state.config.max_data_size,
+      },
+      state.logger,
+    )
     await state.database.init()
 
     // Initialize cache
@@ -522,6 +564,7 @@ async function initializePlugin(
       state.logger,
       {
         stopCachingVariable: "_haritsuke_stop_caching",
+        registerKeys: state.config.register_keys,
       },
       vimApi,
       fileSystemApi,
@@ -668,8 +711,11 @@ async function stopRounderWithCleanup(
       await Deno.remove(undoFilePath)
       state.logger?.log("undo", "Deleted undo file", { undoFilePath })
     } catch (e) {
-      // File might already be deleted
-      state.logger?.error("undo", "Failed to delete undo file", e)
+      if (e instanceof Deno.errors.NotFound) {
+        state.logger?.log("undo", "Undo file already removed", { undoFilePath })
+      } else {
+        state.logger?.error("undo", "Failed to delete undo file", e)
+      }
     }
   }
 

@@ -65,7 +65,7 @@ describe("paste preparation", () => {
         register: "b",
       }
       const cmd = generatePasteCommand(data)
-      assertEquals(cmd, 'normal! gv"b1gp')
+      assertEquals(cmd, 'normal! gv"bgp')
     })
   })
 
@@ -150,8 +150,8 @@ describe("paste preparation", () => {
 
       // Mock cache entries
       const mockEntries = [
-        { id: "1", content: "test1", regtype: "v" as const, timestamp: 1 },
-        { id: "2", content: "test2", regtype: "V" as const, timestamp: 2 },
+        { id: "1", content: "test1", regtype: "v" as const, timestamp: 1, register: '"' },
+        { id: "2", content: "test2", regtype: "V" as const, timestamp: 2, register: '"' },
       ]
 
       const state = createMockPluginState({
@@ -202,6 +202,60 @@ describe("paste preparation", () => {
       })
       assertEquals(setBeforePasteCursorPosSpy.calls.length, 1)
       assertEquals(setBeforePasteCursorPosSpy.calls[0]?.args[0], [0, 10, 5, 0])
+    })
+
+    it("filters cache entries by target register", async () => {
+      const startSpy = spy((_entries: unknown, _info: unknown) => Promise.resolve())
+      const mockRounder = {
+        isActive: () => false,
+        stop: () => undefined,
+        start: startSpy,
+        setBeforePasteCursorPos: spy(),
+      }
+
+      const cacheEntries = [
+        { id: "1", content: "a1", regtype: "v" as const, timestamp: 1, register: "a" },
+        { id: "2", content: "default", regtype: "v" as const, timestamp: 2, register: '"' },
+        { id: "3", content: "b1", regtype: "v" as const, timestamp: 3, register: "b" },
+      ]
+
+      const state = createMockPluginState({
+        cache: {
+          getAll: () => cacheEntries,
+        } as unknown as PluginState["cache"],
+      })
+
+      const mockDenops = createMockDenops((fn: string) => {
+        if (fn === "bufnr") {
+          return Promise.resolve(1)
+        } else if (fn === "getpos") {
+          return Promise.resolve([0, 1, 1, 0])
+        }
+        return Promise.resolve()
+      })
+
+      const data: PreparePasteData = {
+        mode: "p",
+        vmode: "n",
+        count: 1,
+        register: "a",
+      }
+
+      await initializeRounderForPaste(
+        mockDenops,
+        mockRounder as unknown as Rounder,
+        state,
+        data,
+        { clearHighlight: () => Promise.resolve() },
+      )
+
+      assertEquals(startSpy.calls.length, 1)
+      const startedEntries = startSpy.calls[0]?.args?.[0] as typeof cacheEntries | undefined
+      if (!startedEntries) {
+        throw new Error("expected cache entries to be passed to rounder.start")
+      }
+      assertEquals(startedEntries.length, 1)
+      assertEquals(startedEntries[0].register, "a")
     })
   })
 })

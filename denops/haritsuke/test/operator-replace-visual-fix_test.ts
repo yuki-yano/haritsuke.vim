@@ -1,5 +1,4 @@
-import { assertEquals } from "jsr:@std/assert"
-import { describe, it } from "jsr:@std/testing/bdd"
+import { assertEquals, describe, it } from "../deps/test.ts"
 import { executeReplaceOperator } from "../core/operator-replace.ts"
 import { createMockVimApi } from "../vim/vim-api.ts"
 
