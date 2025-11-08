@@ -10,6 +10,7 @@ import type { PasteInfo, YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
 import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
+import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
 
 export type PasteConfig = {
   useRegionHl: boolean
@@ -269,11 +270,15 @@ export const createPasteHandler = (
             rounder.setChangedTick(changedTick)
 
             // Update paste range using '[ and '] marks
-            const pasteStart = await vimApi.getpos("'[")
-            const pasteEnd = await vimApi.getpos("']")
-            rounder.setPasteRange(
-              [pasteStart[0] ?? 0, pasteStart[1] ?? 0, pasteStart[2] ?? 0, pasteStart[3] ?? 0],
-              [pasteEnd[0] ?? 0, pasteEnd[1] ?? 0, pasteEnd[2] ?? 0, pasteEnd[3] ?? 0],
+            const { start: pasteStartPos, end: pasteEndPos } = await getPasteRangeFromMarks((mark) =>
+              vimApi.getpos(mark)
+            )
+            rounder.setPasteRange(pasteStartPos, pasteEndPos)
+            await saveLastPasteRegion(
+              denops,
+              logger,
+              { start: pasteStartPos, end: pasteEndPos },
+              entry.regtype,
             )
           }
 

@@ -17,6 +17,17 @@ const createMockCallbacks = (): PasteHandlerCallbacks => ({
   clearHighlight: spy(() => Promise.resolve()),
 })
 
+const createMockDenops = (): Denops => {
+  return {
+    call: spy((fn: string) => {
+      if (fn === "bufnr") {
+        return Promise.resolve(1)
+      }
+      return Promise.resolve()
+    }),
+  } as unknown as Denops
+}
+
 // Helper to create test entries
 const _createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
   id,
@@ -81,7 +92,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
 
       // Apply history entry during cycle
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         1,
         { mode: "P", count: 1, register: '"', actualPasteCommand: "P" },
@@ -168,7 +179,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       await rounder.start([entry], { mode: "p", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         1,
         { mode: "p", count: 1, register: '"', actualPasteCommand: "p" },
@@ -238,7 +249,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         1,
         { mode: "P", count: 1, register: '"', actualPasteCommand: "P" },
@@ -293,7 +304,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         1,
         { mode: "P", count: 1, register: '"' },
@@ -362,7 +373,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
       await rounder.start([entry], { mode: "P", count: 1, register: '"' })
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         1,
         { mode: "P", count: 1, register: '"' },

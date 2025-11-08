@@ -2,6 +2,17 @@
 let s:last_config_hash = ''
 let s:initialized = 0
 
+function! s:is_current_buffer(pos) abort
+  if type(a:pos) != v:t_list
+    return v:false
+  endif
+  let l:id = get(a:pos, 0, 0)
+  if l:id == 0
+    return v:true
+  endif
+  return l:id == bufnr('%')
+endfunction
+
 function! s:get_config_hash() abort
   return string(get(g:, 'haritsuke_config', {}))
 endfunction
@@ -154,4 +165,87 @@ function! haritsuke#do_paste_no_smart_indent(mode, vmode) abort
     " Update config hash again
     let s:last_config_hash = ''
   endtry
+endfunction
+
+function! s:get_last_paste_region() abort
+  let l:info = get(b:, 'haritsuke_last_paste', {})
+  if type(l:info) == v:t_dict && has_key(l:info, 'start') && has_key(l:info, 'end')
+        \ && s:is_current_buffer(l:info.start)
+        \ && s:is_current_buffer(l:info.end)
+    return l:info
+  endif
+
+  let l:start = getpos("'[")
+  let l:end = getpos("']")
+  if l:start[1] <= 0 || l:end[1] <= 0 || !s:is_current_buffer(l:start) || !s:is_current_buffer(l:end)
+    return {}
+  endif
+
+  return { 'start': l:start, 'end': l:end, 'regtype': 'v' }
+endfunction
+
+function! s:select_paste_region(region, kind) abort
+  if empty(a:region)
+    return v:false
+  endif
+
+  let l:start = copy(a:region.start)
+  let l:end = copy(a:region.end)
+
+  if !s:is_current_buffer(l:start) || !s:is_current_buffer(l:end)
+    return v:false
+  endif
+
+  let l:current_mode = mode()
+  let l:ctrl_v = nr2char(22)
+  if l:current_mode ==# 'v' || l:current_mode ==# 'V' || l:current_mode ==# l:ctrl_v
+    execute "normal! \<Esc>"
+  endif
+
+  if l:start[1] > l:end[1] || (l:start[1] == l:end[1] && l:start[2] > l:end[2])
+    let l:tmp = l:start
+    let l:start = l:end
+    let l:end = l:tmp
+  endif
+
+  let l:seltype = get(a:region, 'regtype', 'v')
+  if a:kind ==# 'outer' && l:seltype !=# 'b'
+    let l:seltype = 'V'
+  endif
+
+  let l:start_col = l:start[2] > 0 ? l:start[2] : 1
+  let l:end_col = l:end[2] > 0 ? l:end[2] : 1
+
+  execute printf('keepjumps normal! %dG%d|', l:start[1], l:start_col)
+  if l:seltype ==# 'V'
+    execute 'keepjumps normal! V'
+    execute printf('keepjumps normal! %dG', l:end[1])
+  elseif l:seltype ==# 'b'
+    execute "keepjumps normal! \<C-v>"
+    execute printf('keepjumps normal! %dG%d|', l:end[1], l:end_col)
+  else
+    execute 'keepjumps normal! v'
+    execute printf('keepjumps normal! %dG%d|', l:end[1], l:end_col)
+  endif
+
+  return v:true
+endfunction
+
+function! haritsuke#textobj_paste(kind) abort
+  let l:region = s:get_last_paste_region()
+  if empty(l:region)
+    echohl WarningMsg
+    echom '[haritsuke] No paste region found'
+    echohl None
+    return
+  endif
+
+  let l:target_kind = a:kind ==# 'outer' ? 'outer' : 'inner'
+  if s:select_paste_region(l:region, l:target_kind)
+    return
+  endif
+
+  echohl WarningMsg
+  echom '[haritsuke] Failed to select paste region'
+  echohl None
 endfunction

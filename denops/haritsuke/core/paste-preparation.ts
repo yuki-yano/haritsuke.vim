@@ -8,6 +8,7 @@ import { fn } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Rounder } from "./rounder.ts"
 import { SPECIAL_REGISTERS } from "../constants.ts"
+import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
 
 export type PreparePasteData = {
   mode: string
@@ -130,21 +131,18 @@ export const processPasteCompletion = async (
   rounder.setChangedTick(changedTick)
 
   // Store paste range using '[ and '] marks
-  const pasteStart = await fn.getpos(denops, "'[")
-  const pasteEnd = await fn.getpos(denops, "']")
-  rounder.setPasteRange(
-    [
-      pasteStart[0] ?? 0,
-      pasteStart[1] ?? 0,
-      pasteStart[2] ?? 0,
-      pasteStart[3] ?? 0,
-    ],
-    [
-      pasteEnd[0] ?? 0,
-      pasteEnd[1] ?? 0,
-      pasteEnd[2] ?? 0,
-      pasteEnd[3] ?? 0,
-    ],
+  const { start: pasteStartPos, end: pasteEndPos } = await getPasteRangeFromMarks((mark) => fn.getpos(denops, mark))
+  rounder.setPasteRange(pasteStartPos, pasteEndPos)
+
+  const currentEntry = rounder.getCurrentEntry()
+  await saveLastPasteRegion(
+    denops,
+    state.logger,
+    {
+      start: pasteStartPos,
+      end: pasteEndPos,
+    },
+    currentEntry?.regtype ?? "v",
   )
 
   // Save undo sequence AFTER paste
