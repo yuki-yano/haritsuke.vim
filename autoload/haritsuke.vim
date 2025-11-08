@@ -2,6 +2,17 @@
 let s:last_config_hash = ''
 let s:initialized = 0
 
+function! s:is_current_buffer(pos) abort
+  if type(a:pos) != v:t_list
+    return v:false
+  endif
+  let l:id = get(a:pos, 0, 0)
+  if l:id <= 0
+    return v:true
+  endif
+  return l:id == bufnr('%')
+endfunction
+
 function! s:get_config_hash() abort
   return string(get(g:, 'haritsuke_config', {}))
 endfunction
@@ -159,15 +170,14 @@ endfunction
 function! s:get_last_paste_region() abort
   let l:info = get(b:, 'haritsuke_last_paste', {})
   if type(l:info) == v:t_dict && has_key(l:info, 'start') && has_key(l:info, 'end')
-        \ && type(l:info.start) == v:t_list && type(l:info.end) == v:t_list
-        \ && get(l:info.start, 0, bufnr('%')) == bufnr('%')
-        \ && get(l:info.end, 0, bufnr('%')) == bufnr('%')
+        \ && s:is_current_buffer(l:info.start)
+        \ && s:is_current_buffer(l:info.end)
     return l:info
   endif
 
   let l:start = getpos("'[")
   let l:end = getpos("']")
-  if l:start[1] <= 0 || l:end[1] <= 0 || l:start[0] != bufnr('%') || l:end[0] != bufnr('%')
+  if l:start[1] <= 0 || l:end[1] <= 0 || !s:is_current_buffer(l:start) || !s:is_current_buffer(l:end)
     return {}
   endif
 
@@ -182,7 +192,7 @@ function! s:select_paste_region(region, kind) abort
   let l:start = copy(a:region.start)
   let l:end = copy(a:region.end)
 
-  if l:start[0] != bufnr('%') || l:end[0] != bufnr('%')
+  if !s:is_current_buffer(l:start) || !s:is_current_buffer(l:end)
     return v:false
   endif
 
