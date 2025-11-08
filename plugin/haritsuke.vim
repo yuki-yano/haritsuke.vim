@@ -31,6 +31,25 @@ xnoremap <silent> <Plug>(haritsuke-gP) <Cmd>call haritsuke#do_paste('gP', 'v')<C
 nnoremap <silent> <Plug>(haritsuke-prev) <Cmd>call haritsuke#cycle_prev()<CR>
 nnoremap <silent> <Plug>(haritsuke-next) <Cmd>call haritsuke#cycle_next()<CR>
 
+" Text objects for the last paste region
+xnoremap <silent> <Plug>(haritsuke-textobj-inner) :<C-u>call haritsuke#textobj_paste('inner')<CR>
+onoremap <silent> <Plug>(haritsuke-textobj-inner) :<C-u>call haritsuke#textobj_paste('inner')<CR>
+xnoremap <silent> <Plug>(haritsuke-textobj-outer) :<C-u>call haritsuke#textobj_paste('outer')<CR>
+onoremap <silent> <Plug>(haritsuke-textobj-outer) :<C-u>call haritsuke#textobj_paste('outer')<CR>
+
+if !hasmapto('<Plug>(haritsuke-textobj-inner)', 'x')
+  xmap iP <Plug>(haritsuke-textobj-inner)
+endif
+if !hasmapto('<Plug>(haritsuke-textobj-inner)', 'o')
+  omap iP <Plug>(haritsuke-textobj-inner)
+endif
+if !hasmapto('<Plug>(haritsuke-textobj-outer)', 'x')
+  xmap aP <Plug>(haritsuke-textobj-outer)
+endif
+if !hasmapto('<Plug>(haritsuke-textobj-outer)', 'o')
+  omap aP <Plug>(haritsuke-textobj-outer)
+endif
+
 " Replace operator
 nnoremap <silent> <Plug>(haritsuke-replace) <Cmd>set operatorfunc=haritsuke#replace_operator<CR>g@
 xnoremap <silent> <Plug>(haritsuke-replace) :<C-u>call haritsuke#replace_operator(visualmode(1))<CR>

@@ -63,6 +63,12 @@ xmap gr <Plug>(haritsuke-replace)
 
 " Toggle smart indent while cycling (optional)
 nmap <C-i> <Plug>(haritsuke-toggle-smart-indent)
+
+" Text object for the most recent haritsuke paste
+omap iP <Plug>(haritsuke-textobj-inner)
+xmap iP <Plug>(haritsuke-textobj-inner)
+omap aP <Plug>(haritsuke-textobj-outer)
+xmap aP <Plug>(haritsuke-textobj-outer)
 ```
 
 Using Neovim Lua:
@@ -83,6 +89,10 @@ vim.keymap.set({'n', 'x'}, 'gr', '<Plug>(haritsuke-replace)')
 
 -- Toggle smart indent while cycling (optional)
 vim.keymap.set('n', '<C-i>', '<Plug>(haritsuke-toggle-smart-indent)')
+
+-- Text object for the last haritsuke paste
+vim.keymap.set({'o', 'x'}, 'iP', '<Plug>(haritsuke-textobj-inner)')
+vim.keymap.set({'o', 'x'}, 'aP', '<Plug>(haritsuke-textobj-outer)')
 ```
 
 ### How it works
@@ -116,6 +126,15 @@ grG     " Replace from cursor to end of file
 " 5. Check if cycling is active
 :echo haritsuke#is_active()  " Returns 1 during cycling, 0 otherwise
 ```
+
+### Paste text object
+
+After pasting with haritsuke (including history cycling or the replace operator), you can target the inserted range directly via the provided text objects:
+
+- `iP` (`<Plug>(haritsuke-textobj-inner)`) selects exactly the pasted span.
+- `aP` (`<Plug>(haritsuke-textobj-outer)`) expands the selection to whole lines unless the paste was block-wise (block pastes keep their rectangular shape).
+
+These mappings work in both operator-pending and visual modes, so commands like `>aP`, `daP`, or `viP` operate on the last pasted text. Remap them as needed by binding to the `<Plug>` mappings shown above. The plugin also keeps the latest region in `b:haritsuke_last_paste` (containing `start`, `end`, and `regtype`), which you can reuse from custom scripts if you prefer a different workflow.
 
 ## Configuration
 

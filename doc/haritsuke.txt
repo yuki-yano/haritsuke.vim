@@ -75,6 +75,12 @@ After installation, set up key mappings to use haritsuke.vim features:
     " Replace operator
     nmap gr <Plug>(haritsuke-replace)
     xmap gr <Plug>(haritsuke-replace)
+
+    " Text object for the last haritsuke paste
+    omap iP <Plug>(haritsuke-textobj-inner)
+    xmap iP <Plug>(haritsuke-textobj-inner)
+    omap aP <Plug>(haritsuke-textobj-outer)
+    xmap aP <Plug>(haritsuke-textobj-outer)
 <
 
 ==============================================================================
@@ -122,6 +128,18 @@ MAPPINGS                                        *haritsuke-mappings*
     use this mapping to toggle between adjusted and original
     indentation. The change is applied immediately to the
     current paste.
+
+                                                *<Plug>(haritsuke-textobj-inner)*
+<Plug>(haritsuke-textobj-inner)
+    Select the exact region of the most recent haritsuke paste.
+    Works in operator-pending and visual modes. Mapped to `iP`
+    by default.
+
+                                                *<Plug>(haritsuke-textobj-outer)*
+<Plug>(haritsuke-textobj-outer)
+    Select the last haritsuke paste, expanding to full lines
+    unless the paste was block-wise (block selections stay
+    rectangular). Mapped to `aP` by default.
 
                                                 *<Plug>(haritsuke-p-no-smart-indent)*
                                                 *<Plug>(haritsuke-P-no-smart-indent)*
@@ -178,6 +196,13 @@ haritsuke#list()
       echo printf("%s: %s", entry.type, entry.content)
     endfor
 <
+
+                                                *b:haritsuke_last_paste*
+b:haritsuke_last_paste
+    Buffer-local dictionary with the latest paste range recorded
+    by haritsuke. Contains `start`, `end`, and `regtype` fields
+    (matching |getpos()| and register type). Used internally for
+    the text object but available for custom integrations.
 
 ==============================================================================
 CONFIGURATION                                   *haritsuke-configuration*

@@ -155,3 +155,81 @@ function! haritsuke#do_paste_no_smart_indent(mode, vmode) abort
     let s:last_config_hash = ''
   endtry
 endfunction
+
+function! s:get_last_paste_region() abort
+  let l:info = get(b:, 'haritsuke_last_paste', {})
+  if type(l:info) == v:t_dict && has_key(l:info, 'start') && has_key(l:info, 'end')
+        \ && type(l:info.start) == v:t_list && type(l:info.end) == v:t_list
+        \ && get(l:info.start, 0, bufnr('%')) == bufnr('%')
+        \ && get(l:info.end, 0, bufnr('%')) == bufnr('%')
+    return l:info
+  endif
+
+  let l:start = getpos("'[")
+  let l:end = getpos("']")
+  if l:start[1] <= 0 || l:end[1] <= 0 || l:start[0] != bufnr('%') || l:end[0] != bufnr('%')
+    return {}
+  endif
+
+  return { 'start': l:start, 'end': l:end, 'regtype': 'v' }
+endfunction
+
+function! s:select_paste_region(region, kind) abort
+  if empty(a:region)
+    return v:false
+  endif
+
+  let l:start = copy(a:region.start)
+  let l:end = copy(a:region.end)
+
+  if l:start[0] != bufnr('%') || l:end[0] != bufnr('%')
+    return v:false
+  endif
+
+  if l:start[1] > l:end[1] || (l:start[1] == l:end[1] && l:start[2] > l:end[2])
+    let l:tmp = l:start
+    let l:start = l:end
+    let l:end = l:tmp
+  endif
+
+  let l:seltype = get(a:region, 'regtype', 'v')
+  if a:kind ==# 'outer' && l:seltype !=# 'b'
+    let l:seltype = 'V'
+  endif
+
+  let l:start_col = l:start[2] > 0 ? l:start[2] : 1
+  let l:end_col = l:end[2] > 0 ? l:end[2] : 1
+
+  execute printf('keepjumps normal! %dG%d|', l:start[1], l:start_col)
+  if l:seltype ==# 'V'
+    execute 'keepjumps normal! V'
+    execute printf('keepjumps normal! %dG', l:end[1])
+  elseif l:seltype ==# 'b'
+    execute "keepjumps normal! \<C-v>"
+    execute printf('keepjumps normal! %dG%d|', l:end[1], l:end_col)
+  else
+    execute 'keepjumps normal! v'
+    execute printf('keepjumps normal! %dG%d|', l:end[1], l:end_col)
+  endif
+
+  return v:true
+endfunction
+
+function! haritsuke#textobj_paste(kind) abort
+  let l:region = s:get_last_paste_region()
+  if empty(l:region)
+    echohl WarningMsg
+    echom '[haritsuke] No paste region found'
+    echohl None
+    return
+  endif
+
+  let l:target_kind = a:kind ==# 'outer' ? 'outer' : 'inner'
+  if s:select_paste_region(l:region, l:target_kind)
+    return
+  endif
+
+  echohl WarningMsg
+  echom '[haritsuke] Failed to select paste region'
+  echohl None
+endfunction
