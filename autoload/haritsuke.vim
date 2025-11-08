@@ -7,7 +7,7 @@ function! s:is_current_buffer(pos) abort
     return v:false
   endif
   let l:id = get(a:pos, 0, 0)
-  if l:id <= 0
+  if l:id == 0
     return v:true
   endif
   return l:id == bufnr('%')
@@ -194,6 +194,12 @@ function! s:select_paste_region(region, kind) abort
 
   if !s:is_current_buffer(l:start) || !s:is_current_buffer(l:end)
     return v:false
+  endif
+
+  let l:current_mode = mode()
+  let l:ctrl_v = nr2char(22)
+  if l:current_mode ==# 'v' || l:current_mode ==# 'V' || l:current_mode ==# l:ctrl_v
+    execute "normal! \<Esc>"
   endif
 
   if l:start[1] > l:end[1] || (l:start[1] == l:end[1] && l:start[2] > l:end[2])

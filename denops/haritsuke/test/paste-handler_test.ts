@@ -18,6 +18,17 @@ const createMockCallbacks = (): PasteHandlerCallbacks => ({
   clearHighlight: spy(() => Promise.resolve()),
 })
 
+const createMockDenops = (): Denops => {
+  return {
+    call: spy((fn: string) => {
+      if (fn === "bufnr") {
+        return Promise.resolve(1)
+      }
+      return Promise.resolve()
+    }),
+  } as unknown as Denops
+}
+
 // Helper to create test entries
 const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
   id,
@@ -72,7 +83,7 @@ describe("createPasteHandler", () => {
       // Apply history entry
       const entry = createTestEntry("2", "new content", 2000)
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         11,
         { mode: "p", count: 1, register: '"' },
@@ -139,7 +150,7 @@ describe("createPasteHandler", () => {
 
       // Apply history entry
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -205,7 +216,7 @@ describe("createPasteHandler", () => {
       // Apply history entry - should throw error
       try {
         await pasteHandler.applyHistoryEntry(
-          {} as Denops,
+          createMockDenops(),
           entry,
           10,
           { mode: "p", count: 1, register: '"' },
@@ -274,7 +285,7 @@ describe("createPasteHandler", () => {
       const rounder = createRounder(null)
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -321,7 +332,7 @@ describe("createPasteHandler", () => {
       const rounder = createRounder(null)
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -362,7 +373,7 @@ describe("createPasteHandler", () => {
       const rounder = createRounder(null)
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -421,7 +432,7 @@ describe("createPasteHandler", () => {
       rounder.setTemporarySmartIndent(true) // Override global setting
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -468,7 +479,7 @@ describe("createPasteHandler", () => {
       rounder.setBaseIndent("      ") // 6 spaces
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },
@@ -514,7 +525,7 @@ describe("createPasteHandler", () => {
       rounder.setTemporarySmartIndent(false) // Override global setting
 
       await pasteHandler.applyHistoryEntry(
-        {} as Denops,
+        createMockDenops(),
         entry,
         10,
         { mode: "p", count: 1, register: '"' },

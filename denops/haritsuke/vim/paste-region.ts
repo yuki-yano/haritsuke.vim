@@ -11,7 +11,32 @@ export type PasteRegion = {
 }
 
 const isValidPosition = (pos: number[] | undefined): boolean => {
-  return Array.isArray(pos) && (pos[1] ?? 0) > 0 && (pos[0] ?? -1) >= -1
+  return Array.isArray(pos) && (pos[1] ?? 0) > 0
+}
+
+const normalizePosition = (pos: number[] | undefined): number[] => {
+  return [
+    pos?.[0] ?? 0,
+    pos?.[1] ?? 0,
+    pos?.[2] ?? 0,
+    pos?.[3] ?? 0,
+  ]
+}
+
+export type PasteRange = {
+  start: number[]
+  end: number[]
+}
+
+export const getPasteRangeFromMarks = async (
+  getpos: (mark: string) => Promise<unknown>,
+): Promise<PasteRange> => {
+  const pasteStart = normalizePosition(await getpos("'[") as number[])
+  const pasteEnd = normalizePosition(await getpos("']") as number[])
+  return {
+    start: pasteStart,
+    end: pasteEnd,
+  }
 }
 
 export const saveLastPasteRegion = async (
@@ -35,6 +60,5 @@ export const saveLastPasteRegion = async (
     },
     "save last paste region",
     logger,
-    null,
   )
 }
