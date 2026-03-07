@@ -18,8 +18,13 @@ export type RegisterMonitorConfig = {
   registerKeys?: string
 }
 
+export type RegisterMonitorContext = {
+  fromTextYankPost?: boolean
+  registerName?: string | null
+}
+
 export type RegisterMonitor = {
-  checkChanges: (denops: Denops, isFromTextYankPost?: boolean) => Promise<void>
+  checkChanges: (denops: Denops, context?: RegisterMonitorContext) => Promise<void>
   getLastContent: () => string
   reset: () => void
 }
@@ -69,22 +74,6 @@ export const createRegisterMonitor = (
     return registerStates.get(register)!
   }
 
-  const resolveEventRegister = async (isFromTextYankPost: boolean): Promise<string> => {
-    if (!isFromTextYankPost) {
-      return SPECIAL_REGISTERS.UNNAMED
-    }
-
-    try {
-      const regname = await vimApi.eval(`get(v:event, 'regname', '')`) as unknown
-      if (typeof regname === "string" && regname.length === 1) {
-        return regname
-      }
-    } catch (error) {
-      logger?.error("register", "Failed to resolve yank register from v:event", error)
-    }
-    return SPECIAL_REGISTERS.UNNAMED
-  }
-
   const stringifyRegisterContent = (content: unknown): string => {
     if (Array.isArray(content)) {
       return content.join("\n")
@@ -96,7 +85,7 @@ export const createRegisterMonitor = (
   }
 
   return {
-    checkChanges: async (denops: Denops, isFromTextYankPost = false): Promise<void> => {
+    checkChanges: async (denops: Denops, context?: RegisterMonitorContext): Promise<void> => {
       if (!database || !cache) {
         logger?.log("register", "checkRegisterChanges: no database or cache")
         return
@@ -104,7 +93,15 @@ export const createRegisterMonitor = (
 
       await withErrorHandling(
         async () => {
-          const resolvedRegister = await resolveEventRegister(isFromTextYankPost)
+          const resolvedRegister = (() => {
+            if (context?.fromTextYankPost) {
+              if (typeof context.registerName === "string" && context.registerName.length === 1) {
+                return context.registerName
+              }
+              return SPECIAL_REGISTERS.UNNAMED
+            }
+            return SPECIAL_REGISTERS.UNNAMED
+          })()
           const register = /^[a-z]$/i.test(resolvedRegister) ? resolvedRegister.toLowerCase() : resolvedRegister
 
           if (!trackedRegisters.has(register)) {
@@ -125,7 +122,7 @@ export const createRegisterMonitor = (
 
           if (!registerState.initialized) {
             registerState.initialized = true
-            if (!isFromTextYankPost) {
+            if (!context?.fromTextYankPost) {
               registerState.lastContent = contentStr
               logger?.log("register", "Initialized register content", {
                 register,

@@ -17,7 +17,12 @@ import { createRegisterMonitor } from "../events/register-monitor.ts"
 import { createPasteHandler } from "../core/paste-handler.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import { createFileSystemApi, createVimApi } from "../vim/vim-api.ts"
-import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
+import {
+  handleCursorMoved,
+  handleStopRounder,
+  handleTextYankPost,
+  type TextYankEventPayload,
+} from "../events/event-handlers.ts"
 import { navigateNext, navigatePrev } from "../core/history-navigation.ts"
 import {
   generatePasteCommand,
@@ -33,6 +38,43 @@ import { withErrorHandling } from "../utils/error-handling.ts"
 // Helper to extract first argument from denops args
 const extractFirstArg = (args: unknown): unknown => {
   return Array.isArray(args) ? args[0] : args
+}
+
+const parseTextYankEvent = (args: unknown): TextYankEventPayload | null => {
+  const eventData = extractFirstArg(args)
+  if (!eventData || typeof eventData !== "object") {
+    return null
+  }
+
+  const operator = typeof (eventData as { operator?: unknown }).operator === "string"
+    ? (eventData as { operator: string }).operator
+    : undefined
+
+  const regnameValue = typeof (eventData as { regname?: unknown }).regname === "string"
+    ? (eventData as { regname: string }).regname
+    : undefined
+
+  const regtype = typeof (eventData as { regtype?: unknown }).regtype === "string"
+    ? (eventData as { regtype: string }).regtype
+    : undefined
+
+  const regcontentsValue = (eventData as { regcontents?: unknown }).regcontents
+  const regcontents = Array.isArray(regcontentsValue) || typeof regcontentsValue === "string"
+    ? regcontentsValue
+    : undefined
+
+  if (!operator && !regnameValue && !regtype && !regcontents) {
+    return null
+  }
+
+  const normalizedRegname = regnameValue && regnameValue.length === 1 ? regnameValue : undefined
+
+  return {
+    operator,
+    regname: normalizedRegname,
+    regtype,
+    regcontents,
+  }
 }
 
 export const createApi = (denops: Denops, state: PluginState) => {
@@ -77,7 +119,8 @@ export const createApi = (denops: Denops, state: PluginState) => {
   }
 
   const onTextYankPost = async (args: unknown): Promise<void> => {
-    await handleTextYankPost(denops, state, args)
+    const eventPayload = parseTextYankEvent(args)
+    await handleTextYankPost(denops, state, eventPayload)
   }
 
   const onCursorMoved = async (args: unknown): Promise<void> => {
@@ -626,11 +669,6 @@ async function setupAutocmds(denops: Denops): Promise<void> {
       "CursorMoved",
       "*",
       `call haritsuke#notify('onCursorMoved')`,
-    )
-    helper.define(
-      "TextYankPost",
-      "*",
-      `call haritsuke#notify('onTextYankPost')`,
     )
     // Stop rounder on various events - define basic events that always exist
     helper.define(

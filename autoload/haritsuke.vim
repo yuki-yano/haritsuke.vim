@@ -42,6 +42,33 @@ function! haritsuke#notify(funcname, ...) abort
     \ { -> denops#notify('haritsuke', a:funcname, a:000) })
 endfunction
 
+function! haritsuke#on_textyankpost() abort
+  if !denops#plugin#is_loaded('haritsuke')
+    return
+  endif
+
+  let l:event = get(v:, 'event', {})
+  if type(l:event) != v:t_dict
+    return
+  endif
+
+  let l:operator = get(l:event, 'operator', '')
+  let l:regname = get(l:event, 'regname', '')
+  let l:regcontents = get(l:event, 'regcontents', [])
+
+  if type(l:operator) != v:t_string || empty(l:operator)
+    return
+  endif
+  if type(l:regcontents) != v:t_list && type(l:regcontents) != v:t_string
+    return
+  endif
+  if !(type(l:regname) == v:t_string && len(l:regname) <= 1)
+    return
+  endif
+
+  call haritsuke#notify('onTextYankPost', [copy(l:event)])
+endfunction
+
 function! haritsuke#request(funcname, ...) abort
   call denops#plugin#wait('haritsuke')
   call s:ensure_initialized()

@@ -8,6 +8,13 @@ import { fn } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Rounder } from "../core/rounder.ts"
 
+export type TextYankEventPayload = {
+  operator?: string
+  regname?: string
+  regtype?: string
+  regcontents?: string | string[]
+}
+
 /**
  * Handle TextYankPost event
  * Called when text is yanked in Vim
@@ -15,7 +22,7 @@ import type { Rounder } from "../core/rounder.ts"
 export const handleTextYankPost = async (
   denops: Denops,
   state: PluginState,
-  _args: unknown,
+  event: TextYankEventPayload | null,
 ): Promise<void> => {
   state.logger?.log("yank", "onTextYankPost called", {
     database: !!state.database,
@@ -28,7 +35,12 @@ export const handleTextYankPost = async (
 
   // Check register changes immediately
   // Pass true to indicate this is from TextYankPost event
-  await state.registerMonitor.checkChanges(denops, true)
+  const registerName = typeof event?.regname === "string" && event.regname.length === 1 ? event.regname : null
+
+  await state.registerMonitor.checkChanges(denops, {
+    fromTextYankPost: true,
+    registerName,
+  })
 }
 
 /**

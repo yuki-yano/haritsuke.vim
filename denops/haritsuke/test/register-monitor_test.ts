@@ -261,11 +261,17 @@ describe("createRegisterMonitor", () => {
 
     currentRegister = "a"
     registerContent.a = "alpha"
-    await registerMonitor.checkChanges({} as Denops, true)
+    await registerMonitor.checkChanges({} as Denops, {
+      fromTextYankPost: true,
+      registerName: currentRegister,
+    })
 
     currentRegister = "b"
     registerContent.b = "bravo"
-    await registerMonitor.checkChanges({} as Denops, true)
+    await registerMonitor.checkChanges({} as Denops, {
+      fromTextYankPost: true,
+      registerName: currentRegister,
+    })
 
     let entries = cache.getAll()
     assertEquals(entries.length, 2)
@@ -277,7 +283,10 @@ describe("createRegisterMonitor", () => {
     // Append to register a using uppercase (\"A) should still be tracked as register \"a\"
     currentRegister = "A"
     registerContent.a = "alpha appended"
-    await registerMonitor.checkChanges({} as Denops, true)
+    await registerMonitor.checkChanges({} as Denops, {
+      fromTextYankPost: true,
+      registerName: currentRegister,
+    })
 
     entries = cache.getAll()
     assertEquals(entries.length, 3)

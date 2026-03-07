@@ -36,7 +36,7 @@ describe("event handlers", () => {
     it("calls registerMonitor.checkChanges when all components are present", async () => {
       const mockDenops = createMockDenops()
       const mockLogger = createMockLogger()
-      const checkChangesSpy = spy((_denops: Denops) => Promise.resolve())
+      const checkChangesSpy = spy((_denops: Denops, _context?: unknown) => Promise.resolve())
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -46,11 +46,15 @@ describe("event handlers", () => {
         } as unknown as PluginState["registerMonitor"],
       })
 
-      await handleTextYankPost(mockDenops, state, [])
+      await handleTextYankPost(mockDenops, state, { regname: "a" })
 
       // Verify checkChanges was called
       assertEquals(checkChangesSpy.calls.length, 1)
       assertEquals(checkChangesSpy.calls[0]?.args[0], mockDenops)
+      assertEquals(checkChangesSpy.calls[0]?.args[1], {
+        fromTextYankPost: true,
+        registerName: "a",
+      })
 
       // Verify logging
       const logs = mockLogger.getLogs()
@@ -62,7 +66,7 @@ describe("event handlers", () => {
     it("returns early when components are missing", async () => {
       const mockDenops = createMockDenops()
       const mockLogger = createMockLogger()
-      const checkChangesSpy = spy((_denops: Denops) => Promise.resolve())
+      const checkChangesSpy = spy((_denops: Denops, _context?: unknown) => Promise.resolve())
 
       // Test with missing database
       const stateNoDb = createMockPluginState({
@@ -75,7 +79,7 @@ describe("event handlers", () => {
         } as unknown as PluginState["registerMonitor"],
       })
 
-      await handleTextYankPost(mockDenops, stateNoDb, [])
+      await handleTextYankPost(mockDenops, stateNoDb, { regname: "a" })
 
       // Verify checkChanges was NOT called
       assertEquals(checkChangesSpy.calls.length, 0)

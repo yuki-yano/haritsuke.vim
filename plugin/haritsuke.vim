@@ -70,6 +70,12 @@ xnoremap <silent> <Plug>(haritsuke-gP-no-smart-indent) <Cmd>call haritsuke#do_pa
 " Highlight group
 highlight default link HaritsukeRegion IncSearch
 
+" Ensure TextYankPost events are forwarded only when valid metadata exists
+augroup HaritsukeTextYankPost
+  autocmd!
+  autocmd TextYankPost * call haritsuke#on_textyankpost()
+augroup END
+
 " Initialize denops plugin on startup if denops is ready
 augroup HaritsukeInit
   autocmd!
