@@ -7,6 +7,7 @@ import { adjustContentIndentSmart, resolveSmartIndentBaseIndent } from "../utils
 import { generatePasteCommand, type PreparedPasteInfo, saveUndoFile } from "../core/paste-preparation.ts"
 import type { RounderSessionService } from "../core/rounder-session.ts"
 import { getPasteRuntimeState } from "../state/plugin-state-context.ts"
+import { logBufferDebugState } from "../utils/buffer-debug.ts"
 import { extractFirstArg } from "./args.ts"
 
 export type PasteActions = {
@@ -44,18 +45,16 @@ export const createPasteActions = (
 
         state.logger?.log("paste", "preparePaste called", data)
 
-        const currentLine = await fn.line(denops, ".")
-        const totalLines = await fn.line(denops, "$")
-        const lineContent = await fn.getline(denops, ".")
         const visualMarks = {
           start: await fn.getpos(denops, "'["),
           end: await fn.getpos(denops, "']"),
         }
 
-        state.logger?.log("paste", "Buffer state at preparePaste", {
-          currentLine,
-          totalLines,
-          lineContent,
+        await logBufferDebugState(state.logger, "paste", "Buffer state at preparePaste", {
+          line: (expr) => fn.line(denops, expr) as Promise<number>,
+          getpos: (expr) => fn.getpos(denops, expr) as Promise<number[]>,
+          getline: (lnum) => fn.getline(denops, lnum) as Promise<string>,
+        }, {
           visualMarks,
         })
 

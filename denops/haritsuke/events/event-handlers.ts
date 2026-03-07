@@ -7,6 +7,7 @@ import type { Denops } from "../deps/denops.ts"
 import { fn } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Rounder } from "../core/rounder.ts"
+import { clearHighlightWhenRounderInactive, getCurrentBufferRounder, skipIfApplyingHistory } from "./event-runtime.ts"
 
 export type TextYankEventPayload = {
   operator?: string
@@ -66,25 +67,23 @@ export const handleCursorMoved = async (
   }
 
   // Skip processing if we're applying history
-  const applyingHistory = await denops.eval(
-    "get(g:, '_haritsuke_applying_history', 0)",
-  ) as number
-  if (applyingHistory === 1) {
-    state.logger?.log("cursor", "Skipping onCursorMoved - applying history")
+  if (
+    await skipIfApplyingHistory(denops, state.logger, {
+      category: "cursor",
+      handlerName: "onCursorMoved",
+    })
+  ) {
     return
   }
 
   // Check if rounder is active and cursor has moved or buffer changed
   if (state.rounderManager) {
-    const bufnr = await fn.bufnr(denops, "%")
-    const rounder = await state.rounderManager.getRounder(denops, bufnr)
+    const rounder = await getCurrentBufferRounder(denops, state.rounderManager)
 
     if (rounder.isActive()) {
-      const cursorPos = await fn.getpos(denops, ".")
+      const cursorPos = await fn.getpos(denops, ".") as number[]
       const rounderPos = rounder.getCursorPos()
-      const currentChangedTick = await denops.eval(
-        "b:changedtick",
-      ) as number
+      const currentChangedTick = await denops.eval("b:changedtick") as number
       const rounderChangedTick = rounder.getChangedTick()
 
       // Check if cursor moved
@@ -116,16 +115,7 @@ export const handleCursorMoved = async (
     }
   }
 
-  // Clear highlight if cursor moved (but not during active rounder session)
-  if (state.rounderManager) {
-    const bufnr = await fn.bufnr(denops, "%")
-    const rounder = await state.rounderManager.getRounder(denops, bufnr)
-    if (!rounder.isActive()) {
-      await helpers.clearHighlight(denops)
-    }
-  } else {
-    await helpers.clearHighlight(denops)
-  }
+  await clearHighlightWhenRounderInactive(denops, state.rounderManager, helpers.clearHighlight)
 }
 
 /**
@@ -147,16 +137,16 @@ export const handleStopRounder = async (
   }
 
   // Skip processing if we're applying history
-  const applyingHistory = await denops.eval(
-    "get(g:, '_haritsuke_applying_history', 0)",
-  ) as number
-  if (applyingHistory === 1) {
-    state.logger?.log("event", "Skipping onStopRounder - applying history")
+  if (
+    await skipIfApplyingHistory(denops, state.logger, {
+      category: "event",
+      handlerName: "onStopRounder",
+    })
+  ) {
     return
   }
 
-  const bufnr = await fn.bufnr(denops, "%")
-  const rounder = await state.rounderManager.getRounder(denops, bufnr)
+  const rounder = await getCurrentBufferRounder(denops, state.rounderManager)
 
   if (rounder.isActive()) {
     await helpers.stopRounder(denops, rounder, "event triggered")

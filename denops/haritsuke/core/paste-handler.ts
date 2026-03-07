@@ -10,6 +10,7 @@ import type { PasteInfo, YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
 import { adjustContentIndentSmart, adjustIndent } from "../utils/indent-adjuster.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
+import { logBufferDebugState } from "../utils/buffer-debug.ts"
 import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
 import { createReplaceSessionService } from "./replace-session.ts"
 
@@ -68,19 +69,7 @@ export const createPasteHandler = (
             pasteInfo,
           })
 
-          // Debug: check buffer state before undo
-          if (logger) {
-            const beforeUndo = await vimApi.line("$")
-            const curLine = await vimApi.line(".")
-            const cursorPos = await vimApi.getpos(".")
-            const lineContent = await vimApi.getline(".")
-            logger.log("apply", "Before undo", {
-              totalLines: beforeUndo,
-              currentLine: curLine,
-              cursorPos: cursorPos,
-              lineContent: lineContent,
-            })
-          }
+          await logBufferDebugState(logger, "apply", "Before undo", vimApi)
 
           // CRITICAL: Must use the provided rounder parameter, not get from manager
           if (!rounder) {
@@ -147,19 +136,7 @@ export const createPasteHandler = (
             undoFilePath,
           })
 
-          // Debug: check buffer state after undo and rundo
-          if (logger) {
-            const afterUndo = await vimApi.line("$")
-            const curLine = await vimApi.line(".")
-            const cursorPos = await vimApi.getpos(".")
-            const lineContent = await vimApi.getline(".")
-            logger.log("apply", "After undo and rundo", {
-              totalLines: afterUndo,
-              currentLine: curLine,
-              cursorPos: cursorPos,
-              lineContent: lineContent,
-            })
-          }
+          await logBufferDebugState(logger, "apply", "After undo and rundo", vimApi)
 
           // Verify register was set correctly
           const verifyContent = await vimApi.getreg(targetReg) as string
@@ -190,19 +167,7 @@ export const createPasteHandler = (
           })
           await vimApi.cmd(cmd)
 
-          // Debug: check buffer state after paste
-          if (logger) {
-            const afterPaste = await vimApi.line("$")
-            const curLine = await vimApi.line(".")
-            const cursorPos = await vimApi.getpos(".")
-            const lineContent = await vimApi.getline(".")
-            logger.log("apply", "After paste", {
-              totalLines: afterPaste,
-              currentLine: curLine,
-              cursorPos: cursorPos,
-              lineContent: lineContent,
-            })
-          }
+          await logBufferDebugState(logger, "apply", "After paste", vimApi)
 
           // Apply highlight only if enabled
           if (config.useRegionHl) {
