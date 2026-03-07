@@ -11,6 +11,7 @@ import type { VimApi } from "../vim/vim-api.ts"
 import { adjustContentIndentSmart, adjustIndent } from "../utils/indent-adjuster.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
+import { createReplaceSessionService } from "./replace-session.ts"
 
 export type PasteConfig = {
   useRegionHl: boolean
@@ -44,6 +45,8 @@ export const createPasteHandler = (
   vimApi: VimApi,
   callbacks: PasteHandlerCallbacks,
 ): PasteHandler => {
+  const replaceSession = createReplaceSessionService(vimApi)
+
   return {
     applyHistoryEntry: async (
       denops: Denops,
@@ -126,7 +129,6 @@ export const createPasteHandler = (
 
           // Check if this is a replace operation with single undo enabled
           const replaceInfo = rounder?.getReplaceInfo?.()
-          const isReplaceWithSingleUndo = replaceInfo?.isReplace && replaceInfo?.singleUndo
 
           // Set register content BEFORE undo
           const targetReg = entry.register || '"'
@@ -136,49 +138,14 @@ export const createPasteHandler = (
           })
           await vimApi.setreg(targetReg, contentToSet, entry.regtype)
 
-          if (isReplaceWithSingleUndo && replaceInfo?.deletedRange) {
-            // For replace operations with single undo, we need special handling
-            // The undo will restore both the delete and paste, so we need to delete again
-            logger?.log("apply", "Replace operation with single undo detected")
-
-            // Perform undo to restore the original state
-            logger?.log("apply", "Executing undo")
-            await vimApi.cmd(`silent! undo`)
-
-            // Now delete the range again to prepare for new paste
-            const { start, end } = replaceInfo.deletedRange
-            // Determine visual command based on motionWise
-            let visualCmd = "v" // default to char-wise
-            if (replaceInfo.motionWise === "line") {
-              visualCmd = "V"
-            } else if (replaceInfo.motionWise === "block") {
-              visualCmd = "\x16" // Ctrl-V for block-wise
-            }
-
-            // For line-wise operations, column position is irrelevant
-            const deleteCmd = replaceInfo.motionWise === "line"
-              ? `silent! normal! ${start[1]}G${visualCmd}${end[1]}G"_d`
-              : `silent! normal! ${start[1]}G${start[2]}|${visualCmd}${end[1]}G${end[2]}|"_d`
-
-            logger?.log("apply", "Re-deleting range for replace", {
-              deleteCmd,
-              motionWise: replaceInfo.motionWise,
-              start,
-              end,
-            })
-            await vimApi.cmd(deleteCmd)
-          } else {
-            // Normal behavior: just undo the previous paste
-            logger?.log("apply", "Executing undo")
-            await vimApi.cmd(`silent! undo`)
-
-            // Restore undo file to get back to the state BEFORE initial paste
-            // This includes cursor position and all state
-            if (undoFilePath) {
-              logger?.log("apply", "Restoring undo file", { path: undoFilePath })
-              await vimApi.cmd(`silent! rundo ${undoFilePath}`)
-            }
-          }
+          logger?.log("apply", "Preparing replay", {
+            hasReplaceInfo: !!replaceInfo,
+            undoFilePath,
+          })
+          await replaceSession.prepareReplay({
+            replaceInfo,
+            undoFilePath,
+          })
 
           // Debug: check buffer state after undo and rundo
           if (logger) {
@@ -202,29 +169,22 @@ export const createPasteHandler = (
 
           // Use the actual paste command if it was provided (from replace operator)
           // Otherwise fall back to the original logic
-          let cycleMode: string
-          if (pasteInfo.actualPasteCommand) {
-            // Use the exact same command that was used in the original replace operation
-            cycleMode = pasteInfo.actualPasteCommand
-          } else if (pasteInfo.visualMode) {
-            // Visual mode: always convert to uppercase
-            cycleMode = pasteInfo.mode === "p" ? "P" : pasteInfo.mode === "gp" ? "gP" : pasteInfo.mode
-          } else {
-            // Normal mode: based on regtype
-            const isLinewise = entry.regtype === "V"
-            if (isLinewise) {
-              // Line-wise: keep original mode (p/gp)
-              cycleMode = pasteInfo.mode
-            } else {
-              // Char/block-wise: convert to uppercase (P/gP)
-              cycleMode = pasteInfo.mode === "p" ? "P" : pasteInfo.mode === "gp" ? "gP" : pasteInfo.mode
-            }
-          }
-          const cmd = `silent! normal! ${pasteInfo.count}"${targetReg}${cycleMode}`
+          const cmd = replaceSession.buildReplayPasteCommand(
+            {
+              mode: pasteInfo.mode,
+              count: pasteInfo.count,
+              register: targetReg,
+              visualMode: pasteInfo.visualMode,
+              actualPasteCommand: pasteInfo.actualPasteCommand,
+            },
+            {
+              regtype: entry.regtype,
+            },
+          )
           logger?.log("apply", "Executing paste command", {
             command: cmd,
             originalMode: pasteInfo.mode,
-            cycleMode,
+            cycleMode: cmd,
             regtype: entry.regtype,
             visualMode: pasteInfo.visualMode,
           })

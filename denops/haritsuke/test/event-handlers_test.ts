@@ -109,7 +109,7 @@ describe("event handlers", () => {
       })
 
       await handleCursorMoved(mockDenops, state, [], {
-        stopRounderWithCleanup: stopRounderSpy,
+        stopRounder: stopRounderSpy,
         clearHighlight: clearHighlightSpy,
       })
 
@@ -148,7 +148,7 @@ describe("event handlers", () => {
       })
 
       await handleStopRounder(mockDenops, state, [], {
-        stopRounderWithCleanup: stopRounderSpy,
+        stopRounder: stopRounderSpy,
       })
 
       // Verify processing was skipped
@@ -171,9 +171,7 @@ describe("event handlers", () => {
       })
 
       const mockLogger = createMockLogger()
-      const stopRounderSpy = spy(
-        (_denops: Denops, _state: PluginState, _rounder: unknown, _reason: string) => Promise.resolve(),
-      )
+      const stopRounderSpy = spy((_denops: Denops, _rounder: unknown, _reason: string) => Promise.resolve())
       const isActiveSpy = spy(() => true)
       const mockRounder = { isActive: isActiveSpy }
       const getRounderSpy = spy(() => Promise.resolve(mockRounder))
@@ -186,7 +184,7 @@ describe("event handlers", () => {
       })
 
       await handleStopRounder(mockDenops, state, [], {
-        stopRounderWithCleanup: stopRounderSpy,
+        stopRounder: stopRounderSpy,
       })
 
       // Verify rounder check was performed
@@ -196,9 +194,8 @@ describe("event handlers", () => {
       // Verify stopRounder was called
       assertEquals(stopRounderSpy.calls.length, 1)
       assertEquals(stopRounderSpy.calls[0]?.args[0], mockDenops)
-      assertEquals(stopRounderSpy.calls[0]?.args[1], state)
-      assertEquals(stopRounderSpy.calls[0]?.args[2], mockRounder)
-      assertEquals(stopRounderSpy.calls[0]?.args[3], "event triggered")
+      assertEquals(stopRounderSpy.calls[0]?.args[1], mockRounder)
+      assertEquals(stopRounderSpy.calls[0]?.args[2], "event triggered")
     })
   })
 })

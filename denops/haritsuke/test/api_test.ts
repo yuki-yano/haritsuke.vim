@@ -7,6 +7,7 @@ import { assertSpyCall, assertSpyCalls, describe, it, spy } from "../deps/test.t
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Denops } from "../deps/denops.ts"
+import { createMockFileSystemApi, createMockVimApi } from "../vim/vim-api.ts"
 
 // Mock Denops
 const createMockDenops = (): Denops => {
@@ -49,6 +50,10 @@ const createMinimalState = (): PluginState => {
     timeEnd: spy(() => {}),
   }
 
+  const fileSystemApi = createMockFileSystemApi({
+    remove: spy(() => Promise.resolve()),
+  })
+
   return {
     config: {},
     rounderManager,
@@ -57,6 +62,10 @@ const createMinimalState = (): PluginState => {
     highlightManager: {
       clear: spy(() => Promise.resolve()),
     },
+    vimApi: createMockVimApi({
+      bufnr: () => Promise.resolve(1),
+    }),
+    fileSystemApi,
     isInitialized: () => true,
     reset: spy(() => {}),
   } as unknown as PluginState
@@ -68,34 +77,22 @@ describe("api - onStopRounder", () => {
     const state = createMinimalState()
     const api = createApi(denops, state)
 
-    // Mock file system
-    const originalRemove = Deno.remove
-    Deno.remove = spy(() => Promise.resolve())
+    await api.onStopRounder(undefined)
 
-    try {
-      await api.onStopRounder(undefined)
+    const rounder = await state.rounderManager!.getRounder(denops, 1)
+    assertSpyCalls(rounder.stop as ReturnType<typeof spy>, 1)
 
-      // Verify rounder was stopped
-      const rounder = await state.rounderManager!.getRounder(denops, 1)
-      assertSpyCalls(rounder.stop as ReturnType<typeof spy>, 1)
+    assertSpyCalls(state.cache!.moveToFront as ReturnType<typeof spy>, 1)
+    assertSpyCall(state.cache!.moveToFront as ReturnType<typeof spy>, 0, {
+      args: ["1"],
+    })
 
-      // Verify entry was moved to front
-      assertSpyCalls(state.cache!.moveToFront as ReturnType<typeof spy>, 1)
-      assertSpyCall(state.cache!.moveToFront as ReturnType<typeof spy>, 0, {
-        args: ["1"],
-      })
+    assertSpyCalls(state.fileSystemApi!.remove as ReturnType<typeof spy>, 1)
+    assertSpyCall(state.fileSystemApi!.remove as ReturnType<typeof spy>, 0, {
+      args: ["/tmp/test-undo.txt"],
+    })
 
-      // Verify undo file deletion was attempted
-      assertSpyCalls(Deno.remove as ReturnType<typeof spy>, 1)
-      assertSpyCall(Deno.remove as ReturnType<typeof spy>, 0, {
-        args: ["/tmp/test-undo.txt"],
-      })
-
-      // Verify highlight was cleared
-      assertSpyCalls(state.highlightManager!.clear as ReturnType<typeof spy>, 1)
-    } finally {
-      Deno.remove = originalRemove
-    }
+    assertSpyCalls(state.highlightManager!.clear as ReturnType<typeof spy>, 1)
   })
 
   it("does nothing when rounder is not active", async () => {
@@ -121,24 +118,13 @@ describe("api - onStopRounder", () => {
     const denops = createMockDenops()
     const state = createMinimalState()
     const api = createApi(denops, state)
+    state.fileSystemApi!.remove = spy(() => Promise.reject(new Error("File not found")))
 
-    // Mock file system to throw error
-    const originalRemove = Deno.remove
-    Deno.remove = spy(() => {
-      return Promise.reject(new Error("File not found"))
-    })
+    await api.onStopRounder(undefined)
 
-    try {
-      await api.onStopRounder(undefined)
+    assertSpyCalls(state.logger!.error as ReturnType<typeof spy>, 1)
 
-      // Verify error was logged
-      assertSpyCalls(state.logger!.error as ReturnType<typeof spy>, 1)
-
-      // Verify rounder was still stopped despite error
-      const rounder = await state.rounderManager!.getRounder(denops, 1)
-      assertSpyCalls(rounder.stop as ReturnType<typeof spy>, 1)
-    } finally {
-      Deno.remove = originalRemove
-    }
+    const rounder = await state.rounderManager!.getRounder(denops, 1)
+    assertSpyCalls(rounder.stop as ReturnType<typeof spy>, 1)
   })
 })

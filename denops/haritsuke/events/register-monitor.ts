@@ -6,9 +6,9 @@
 import type { Denops } from "../deps/denops.ts"
 import type { YankDatabase } from "../data/database.ts"
 import type { YankCache } from "../data/cache.ts"
-import type { RounderManager } from "../core/rounder.ts"
+import type { Rounder, RounderManager } from "../core/rounder.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
-import type { FileSystemApi, VimApi } from "../vim/vim-api.ts"
+import type { VimApi } from "../vim/vim-api.ts"
 import { parseRegtype } from "../utils/utils.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 import { SPECIAL_REGISTERS } from "../constants.ts"
@@ -30,7 +30,7 @@ export type RegisterMonitor = {
 }
 
 export type RegisterMonitorCallbacks = {
-  clearHighlight: (denops: Denops) => Promise<void>
+  stopRounder: (denops: Denops, rounder: Rounder, reason: string) => Promise<void>
 }
 
 /**
@@ -43,7 +43,6 @@ export const createRegisterMonitor = (
   logger: DebugLogger | null,
   config: RegisterMonitorConfig,
   vimApi: VimApi,
-  fileSystemApi: FileSystemApi,
   callbacks: RegisterMonitorCallbacks,
 ): RegisterMonitor => {
   const trackedRegisters = (() => {
@@ -157,21 +156,7 @@ export const createRegisterMonitor = (
               rounderWasActive = true
               logger?.log("register", "New yank detected during history cycling", { register })
 
-              const undoFilePath = rounder.getUndoFilePath()
-              if (undoFilePath) {
-                try {
-                  await fileSystemApi.remove(undoFilePath)
-                  logger?.log("undo", "Deleted undo file", { undoFilePath })
-                } catch (e) {
-                  if (e instanceof Deno.errors.NotFound) {
-                    logger?.log("undo", "Undo file already removed", { undoFilePath })
-                  } else {
-                    logger?.error("undo", "Failed to delete undo file", e)
-                  }
-                }
-              }
-              rounder.stop()
-              await callbacks.clearHighlight(denops)
+              await callbacks.stopRounder(denops, rounder, "new yank detected during history cycling")
               logger?.log("rounder", "Rounder stopped due to new yank")
             }
           }

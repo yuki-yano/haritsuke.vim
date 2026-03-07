@@ -52,13 +52,8 @@ export const handleCursorMoved = async (
   state: PluginState,
   _args: unknown,
   helpers: {
-    stopRounderWithCleanup: (
-      denops: Denops,
-      state: PluginState,
-      rounder: Rounder,
-      reason: string,
-    ) => Promise<void>
-    clearHighlight: (denops: Denops, state: PluginState) => Promise<void>
+    stopRounder: (denops: Denops, rounder: Rounder, reason: string) => Promise<void>
+    clearHighlight: (denops: Denops) => Promise<void>
   },
 ): Promise<void> => {
   state.logger?.log("cursor", "onCursorMoved called", {
@@ -116,7 +111,7 @@ export const handleCursorMoved = async (
           : cursorMoved
           ? "cursor moved"
           : "buffer changed"
-        await helpers.stopRounderWithCleanup(denops, state, rounder, reason)
+        await helpers.stopRounder(denops, rounder, reason)
       }
     }
   }
@@ -126,10 +121,10 @@ export const handleCursorMoved = async (
     const bufnr = await fn.bufnr(denops, "%")
     const rounder = await state.rounderManager.getRounder(denops, bufnr)
     if (!rounder.isActive()) {
-      await helpers.clearHighlight(denops, state)
+      await helpers.clearHighlight(denops)
     }
   } else {
-    await helpers.clearHighlight(denops, state)
+    await helpers.clearHighlight(denops)
   }
 }
 
@@ -142,12 +137,7 @@ export const handleStopRounder = async (
   state: PluginState,
   _args: unknown,
   helpers: {
-    stopRounderWithCleanup: (
-      denops: Denops,
-      state: PluginState,
-      rounder: Rounder,
-      reason: string,
-    ) => Promise<void>
+    stopRounder: (denops: Denops, rounder: Rounder, reason: string) => Promise<void>
   },
 ): Promise<void> => {
   state.logger?.log("event", "onStopRounder called")
@@ -169,6 +159,6 @@ export const handleStopRounder = async (
   const rounder = await state.rounderManager.getRounder(denops, bufnr)
 
   if (rounder.isActive()) {
-    await helpers.stopRounderWithCleanup(denops, state, rounder, "event triggered")
+    await helpers.stopRounder(denops, rounder, "event triggered")
   }
 }

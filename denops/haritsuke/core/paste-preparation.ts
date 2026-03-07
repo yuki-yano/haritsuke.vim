@@ -4,11 +4,9 @@
  */
 
 import type { Denops } from "../deps/denops.ts"
-import { fn } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { Rounder } from "./rounder.ts"
-import { SPECIAL_REGISTERS } from "../constants.ts"
-import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
+import { createRounderSessionService } from "./rounder-session.ts"
 
 export type PreparePasteData = {
   mode: string
@@ -72,39 +70,18 @@ export const initializeRounderForPaste = async (
     clearHighlight: (denops: Denops, state: PluginState) => Promise<void>
   },
 ): Promise<void> => {
-  // Clear any active rounder if needed
-  if (rounder.isActive()) {
-    state.logger?.log("rounder", "Active rounder exists, stopping it", {
-      buffer: await fn.bufnr(denops, "%"),
-    })
-    rounder.stop()
-    await callbacks.clearHighlight(denops, state)
-  }
-
-  // Initialize rounder with entries
-  const allEntries = state.cache!.getAll()
-  const targetRegister = data.register || SPECIAL_REGISTERS.UNNAMED
-  const filteredEntries = targetRegister === SPECIAL_REGISTERS.UNNAMED
-    ? allEntries
-    : allEntries.filter((entry) => (entry.register ?? SPECIAL_REGISTERS.UNNAMED) === targetRegister)
-  const rounderEntries = filteredEntries.length > 0 ? filteredEntries : allEntries
-
-  await rounder.start(rounderEntries, {
-    mode: data.mode as "p" | "P" | "gp" | "gP",
-    count: data.count,
-    register: data.register,
-    visualMode: data.vmode === "v",
-    actualPasteCommand: data.mode as "p" | "P" | "gp" | "gP", // For replace operator, this is the actual command used
+  const service = createRounderSessionService({
+    cache: state.cache!,
+    vimApi: state.vimApi!,
+    fileSystemApi: state.fileSystemApi!,
+    logger: state.logger,
+    shouldUseRegionHighlight: () => state.config.use_region_hl ?? false,
+    callbacks: {
+      clearHighlight: async (d) => await callbacks.clearHighlight(d, state),
+      applyHighlight: () => Promise.resolve(),
+    },
   })
-
-  // Save cursor position before paste
-  const beforePasteCursorPos = await fn.getpos(denops, ".")
-  rounder.setBeforePasteCursorPos([
-    beforePasteCursorPos[0] ?? 0,
-    beforePasteCursorPos[1] ?? 0,
-    beforePasteCursorPos[2] ?? 0,
-    beforePasteCursorPos[3] ?? 0,
-  ])
+  await service.startForPaste(denops, rounder, data)
 }
 
 /**
@@ -119,58 +96,16 @@ export const processPasteCompletion = async (
     applyHighlight: (denops: Denops, state: PluginState, register: string) => Promise<void>
   },
 ): Promise<void> => {
-  // Store cursor position and changed tick AFTER paste
-  const cursorPos = await fn.getpos(denops, ".")
-  const changedTick = await denops.eval("b:changedtick") as number
-  rounder.setCursorPos([
-    cursorPos[0] ?? 0,
-    cursorPos[1] ?? 0,
-    cursorPos[2] ?? 0,
-    cursorPos[3] ?? 0,
-  ])
-  rounder.setChangedTick(changedTick)
-
-  // Store paste range using '[ and '] marks
-  const { start: pasteStartPos, end: pasteEndPos } = await getPasteRangeFromMarks((mark) => fn.getpos(denops, mark))
-  rounder.setPasteRange(pasteStartPos, pasteEndPos)
-
-  const currentEntry = rounder.getCurrentEntry()
-  await saveLastPasteRegion(
-    denops,
-    state.logger,
-    {
-      start: pasteStartPos,
-      end: pasteEndPos,
+  const service = createRounderSessionService({
+    cache: state.cache!,
+    vimApi: state.vimApi!,
+    fileSystemApi: state.fileSystemApi!,
+    logger: state.logger,
+    shouldUseRegionHighlight: () => state.config.use_region_hl ?? false,
+    callbacks: {
+      clearHighlight: () => Promise.resolve(),
+      applyHighlight: async (d, register) => await callbacks.applyHighlight(d, state, register),
     },
-    currentEntry?.regtype ?? "v",
-  )
-
-  // Save undo sequence AFTER paste
-  const undoTree = await denops.call("undotree") as Record<string, unknown>
-  const undoSeq = undoTree.seq_cur as number
-  rounder.setUndoSeq(undoSeq)
-
-  // Apply highlight if enabled
-  if (state.config.use_region_hl) {
-    await callbacks.applyHighlight(denops, state, preparedInfo.register)
-  }
-
-  // For gp/gP, move cursor to end of pasted text
-  if (preparedInfo.mode === "gp" || preparedInfo.mode === "gP") {
-    await denops.cmd("normal! `]")
-  }
-
-  // Update cursor position after paste
-  const finalCursorPos = await fn.getpos(denops, ".")
-  rounder.setCursorPos([
-    finalCursorPos[0] ?? 0,
-    finalCursorPos[1] ?? 0,
-    finalCursorPos[2] ?? 0,
-    finalCursorPos[3] ?? 0,
-  ])
-
-  // Save undo file path in rounder
-  if (preparedInfo.undoFilePath) {
-    rounder.setUndoFilePath(preparedInfo.undoFilePath)
-  }
+  })
+  await service.completePaste(denops, rounder, preparedInfo)
 }

@@ -9,6 +9,7 @@ import { generatePasteCommand, initializeRounderForPaste, saveUndoFile } from ".
 import type { PreparePasteData } from "../core/paste-preparation.ts"
 import type { Rounder } from "../core/rounder.ts"
 import { createMockPluginState } from "./test-helpers.ts"
+import { createMockVimApi } from "../vim/vim-api.ts"
 
 // Mock Denops
 const createMockDenops = (callHandler?: (fn: string, ...args: unknown[]) => Promise<unknown>): Denops => {
@@ -160,6 +161,10 @@ describe("paste preparation", () => {
         cache: {
           getAll: () => mockEntries,
         } as unknown as PluginState["cache"],
+        vimApi: createMockVimApi({
+          bufnr: () => Promise.resolve(1),
+          getpos: () => Promise.resolve([0, 10, 5, 0]),
+        }),
       })
 
       // Create mockDenops with handler for bufnr and getpos
@@ -223,6 +228,10 @@ describe("paste preparation", () => {
         cache: {
           getAll: () => cacheEntries,
         } as unknown as PluginState["cache"],
+        vimApi: createMockVimApi({
+          bufnr: () => Promise.resolve(1),
+          getpos: () => Promise.resolve([0, 1, 1, 0]),
+        }),
       })
 
       const mockDenops = createMockDenops((fn: string) => {

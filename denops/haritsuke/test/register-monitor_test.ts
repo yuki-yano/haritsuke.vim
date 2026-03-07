@@ -3,14 +3,14 @@
  * Testing register monitoring functionality with dependency injection
  */
 
-import { assertEquals, assertSpyCall, assertSpyCalls, describe, it, spy } from "../deps/test.ts"
+import { assertEquals, assertSpyCalls, describe, it, spy } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { createRegisterMonitor } from "../events/register-monitor.ts"
 import { createYankCache } from "../data/cache.ts"
 import { createRounder } from "../core/rounder.ts"
 import type { YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
-import { createMockFileSystemApi, createMockVimApi } from "../vim/vim-api.ts"
+import { createMockVimApi } from "../vim/vim-api.ts"
 import type { RounderManager } from "../core/rounder.ts"
 import type { RegisterMonitorCallbacks } from "../events/register-monitor.ts"
 
@@ -62,9 +62,8 @@ describe("createRegisterMonitor", () => {
       getregtype: () => Promise.resolve("v"),
     })
 
-    const mockFileSystemApi = createMockFileSystemApi()
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy(() => Promise.resolve()),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -74,7 +73,6 @@ describe("createRegisterMonitor", () => {
       null, // no logger
       { stopCachingVariable: "_haritsuke_stop_caching" },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
@@ -112,9 +110,8 @@ describe("createRegisterMonitor", () => {
       getregtype: () => Promise.resolve("v"),
     })
 
-    const mockFileSystemApi = createMockFileSystemApi()
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy(() => Promise.resolve()),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -124,7 +121,6 @@ describe("createRegisterMonitor", () => {
       null,
       { stopCachingVariable: "_haritsuke_stop_caching" },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
@@ -150,13 +146,11 @@ describe("createRegisterMonitor", () => {
       getregtype: () => Promise.resolve("v"),
     })
 
-    const removeSpy = spy(() => Promise.resolve())
-    const mockFileSystemApi = createMockFileSystemApi({
-      remove: removeSpy,
-    })
-
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy((_denops, rounder) => {
+        rounder.stop()
+        return Promise.resolve()
+      }),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -166,7 +160,6 @@ describe("createRegisterMonitor", () => {
       null,
       { stopCachingVariable: "_haritsuke_stop_caching" },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
@@ -202,14 +195,7 @@ describe("createRegisterMonitor", () => {
     // Verify rounder was stopped
     assertEquals(rounder.isActive(), false)
 
-    // Verify undo file deletion was attempted
-    assertSpyCalls(removeSpy, 1)
-    assertSpyCall(removeSpy, 0, {
-      args: ["/tmp/undo.txt"],
-    })
-
-    // Verify highlight was cleared
-    assertSpyCalls(mockCallbacks.clearHighlight as ReturnType<typeof spy>, 1)
+    assertSpyCalls(mockCallbacks.stopRounder as ReturnType<typeof spy>, 1)
   })
 
   it("tracks configured registers independently", async () => {
@@ -237,9 +223,8 @@ describe("createRegisterMonitor", () => {
       },
     })
 
-    const mockFileSystemApi = createMockFileSystemApi()
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy(() => Promise.resolve()),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -252,7 +237,6 @@ describe("createRegisterMonitor", () => {
         registerKeys: '"ab',
       },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
@@ -306,9 +290,8 @@ describe("createRegisterMonitor", () => {
       getregtype: () => Promise.resolve("V"),
     })
 
-    const mockFileSystemApi = createMockFileSystemApi()
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy(() => Promise.resolve()),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -318,7 +301,6 @@ describe("createRegisterMonitor", () => {
       null,
       { stopCachingVariable: "_haritsuke_stop_caching" },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
@@ -348,9 +330,8 @@ describe("createRegisterMonitor", () => {
     const rounderManager = createMockRounderManager()
 
     const mockVimApi = createMockVimApi()
-    const mockFileSystemApi = createMockFileSystemApi()
     const mockCallbacks: RegisterMonitorCallbacks = {
-      clearHighlight: spy(() => Promise.resolve()),
+      stopRounder: spy(() => Promise.resolve()),
     }
 
     const registerMonitor = createRegisterMonitor(
@@ -360,7 +341,6 @@ describe("createRegisterMonitor", () => {
       null,
       { stopCachingVariable: "_haritsuke_stop_caching" },
       mockVimApi,
-      mockFileSystemApi,
       mockCallbacks,
     )
 
