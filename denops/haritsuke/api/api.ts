@@ -32,7 +32,7 @@ import {
   saveUndoFile,
 } from "../core/paste-preparation.ts"
 import { executeReplaceOperator } from "../core/operator-replace.ts"
-import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
+import { adjustContentIndentSmart, resolveSmartIndentBaseIndent } from "../utils/indent-adjuster.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 
 // Helper to extract first argument from denops args
@@ -225,9 +225,15 @@ export const createApi = (denops: Denops, state: PluginState) => {
         if (state.config.smart_indent && state.vimApi) {
           const regType = await state.vimApi.getregtype(data.register) as string
           if (regType === "V") {
-            const currentLine = await state.vimApi.getline(".")
-            const baseIndentMatch = currentLine.match(/^(\s*)/)
-            const baseIndent = baseIndentMatch ? baseIndentMatch[1] : ""
+            const baseIndent = await resolveSmartIndentBaseIndent(
+              {
+                mode: data.mode as "p" | "P" | "gp" | "gP",
+                count: data.count,
+                register: data.register,
+                visualMode: data.vmode === "v",
+              },
+              state.vimApi,
+            )
             rounder.setBaseIndent(baseIndent)
             state.logger?.log("paste", "Saved base indent for rounder", { baseIndent })
           }

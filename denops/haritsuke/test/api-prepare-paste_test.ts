@@ -178,6 +178,86 @@ describe("api preparePaste", () => {
       assertEquals(setregCalls.length, 0)
     })
 
+    it("saves resolved base indent for yaml-style paste targets", async () => {
+      const baseIndentCalls: string[] = []
+
+      const mockVimApi = createMockVimApi({
+        getreg: (register: string) => {
+          if (register === '"') {
+            return Promise.resolve("name: app\nenabled: true")
+          }
+          return Promise.resolve("")
+        },
+        getregtype: (register: string) => {
+          if (register === '"') {
+            return Promise.resolve("V")
+          }
+          return Promise.resolve("v")
+        },
+        setreg: spy(() => Promise.resolve()),
+        getline: () => Promise.resolve(""),
+        line: () => Promise.resolve(10),
+        getwinvar: (_, name: string) => {
+          if (name === "&shiftwidth") return Promise.resolve(2)
+          if (name === "&expandtab") return Promise.resolve(1)
+          return Promise.resolve(0)
+        },
+        getbufvar: (_, name: string) => {
+          if (name === "&indentexpr") return Promise.resolve("GetYAMLIndent(v:lnum)")
+          return Promise.resolve(0)
+        },
+        eval: (expr: string) => {
+          if (expr === "GetYAMLIndent(11)") return Promise.resolve(2)
+          return Promise.resolve(0)
+        },
+      })
+
+      const mockRounder = {
+        isActive: () => false,
+        start: spy(() => Promise.resolve()),
+        setBeforePasteCursorPos: spy(() => {}),
+        setUndoFilePath: spy(() => {}),
+        setBaseIndent: spy((indent: string) => {
+          baseIndentCalls.push(indent)
+        }),
+      }
+
+      const mockRounderManager = {
+        getRounder: () => Promise.resolve(mockRounder),
+      }
+
+      const state = createMockPluginState({
+        config: {
+          persist_path: "/tmp",
+          max_entries: 100,
+          max_data_size: 1024,
+          register_keys: "",
+          debug: true,
+          use_region_hl: false,
+          region_hl_groupname: "HaritsukeRegion",
+          smart_indent: true,
+        },
+        vimApi: mockVimApi,
+        rounderManager: mockRounderManager as unknown as PluginState["rounderManager"],
+        cache: {
+          getAll: () => [],
+        } as unknown as PluginState["cache"],
+        pasteHandler: {} as unknown as PluginState["pasteHandler"],
+      })
+
+      const denops = createMockDenops()
+      const api = createApi(denops, state)
+
+      await api.preparePaste({
+        mode: "p",
+        vmode: "n",
+        count: 1,
+        register: '"',
+      })
+
+      assertEquals(baseIndentCalls, ["  "])
+    })
+
     it("skips adjustment when smart_indent is disabled", async () => {
       const setregCalls: Array<{ register: string; content: string; regtype: string }> = []
 

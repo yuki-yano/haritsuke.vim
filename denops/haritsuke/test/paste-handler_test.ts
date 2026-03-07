@@ -455,7 +455,7 @@ describe("createPasteHandler", () => {
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),
         setreg: spy(() => Promise.resolve()),
-        getreg: () => Promise.resolve("    function test() {\n      return 42;\n    }"),
+        getreg: () => Promise.resolve("items:\n  - name: app\n    enabled: true"),
         setGlobalVar: spy(() => Promise.resolve()),
       })
 
@@ -468,7 +468,7 @@ describe("createPasteHandler", () => {
 
       const entry: YankEntry = {
         id: "1",
-        content: "    function test() {\n      return 42;\n    }",
+        content: "items:\n  - name: app\n    enabled: true",
         regtype: "V", // Line-wise
         timestamp: 100,
       }
@@ -492,7 +492,7 @@ describe("createPasteHandler", () => {
       assertEquals(setregCalls.length, 1)
       assertEquals(
         setregCalls[0].args[1],
-        "      function test() {\n      return 42;\n      }",
+        "      items:\n        - name: app\n          enabled: true",
       )
     })
 

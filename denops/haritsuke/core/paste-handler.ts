@@ -8,7 +8,7 @@ import type { Rounder } from "./rounder.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
 import type { PasteInfo, YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
-import { adjustContentIndentSmart } from "../utils/indent-adjuster.ts"
+import { adjustContentIndentSmart, adjustIndent } from "../utils/indent-adjuster.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 import { getPasteRangeFromMarks, saveLastPasteRegion } from "../vim/paste-region.ts"
 
@@ -106,10 +106,7 @@ export const createPasteHandler = (
             if (savedBaseIndent !== null && savedBaseIndent !== undefined) {
               // Apply saved base indent
               const lines = entry.content.split("\n")
-              const adjustedLines = lines.map((line) => {
-                if (line.trim() === "") return line
-                return savedBaseIndent + line.trimStart()
-              })
+              const adjustedLines = adjustIndent(lines, savedBaseIndent)
               contentToSet = adjustedLines.join("\n")
               logger?.log("apply", "Applied saved base indent", {
                 baseIndent: savedBaseIndent,

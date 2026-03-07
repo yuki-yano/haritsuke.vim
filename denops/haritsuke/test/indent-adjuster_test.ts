@@ -190,7 +190,7 @@ describe("indent-adjuster", () => {
         },
         cmd: () => Promise.resolve(),
         eval: (expr: string) => {
-          if (expr.includes("indent(")) return Promise.resolve(8) // 2 levels * 4 spaces
+          if (expr === "GetVimIndent()") return Promise.resolve(8) // 2 levels * 4 spaces
           return Promise.resolve(0)
         },
       })
@@ -201,6 +201,34 @@ describe("indent-adjuster", () => {
       const result = await adjustContentIndentSmart(content, pasteInfo, mockVimApi)
 
       assertEquals(result, "        function test() {\n          return 42;\n        }")
+    })
+
+    it("should evaluate indentexpr directly for yaml-style indentation", async () => {
+      const mockVimApi = createMockVimApi({
+        getline: () => Promise.resolve(""),
+        line: () => Promise.resolve(10),
+        getwinvar: (_, name: string) => {
+          if (name === "&shiftwidth") return Promise.resolve(2)
+          if (name === "&expandtab") return Promise.resolve(1)
+          return Promise.resolve(0)
+        },
+        getbufvar: (_, name: string) => {
+          if (name === "&indentexpr") return Promise.resolve("GetYAMLIndent(v:lnum)")
+          return Promise.resolve(0)
+        },
+        eval: (expr: string) => {
+          if (expr === "GetYAMLIndent(11)") return Promise.resolve(2)
+          if (expr.includes("cindent(")) return Promise.resolve(0)
+          return Promise.resolve(0)
+        },
+      })
+
+      const content = "name: app\nenabled: true"
+      const pasteInfo = { mode: "p" as const, count: 1, register: '"' }
+
+      const result = await adjustContentIndentSmart(content, pasteInfo, mockVimApi)
+
+      assertEquals(result, "  name: app\n  enabled: true")
     })
 
     it("should use tabs when expandtab is off", async () => {
@@ -218,7 +246,7 @@ describe("indent-adjuster", () => {
         },
         cmd: () => Promise.resolve(),
         eval: (expr: string) => {
-          if (expr.includes("indent(")) return Promise.resolve(8) // 2 levels
+          if (expr === "GetVimIndent()") return Promise.resolve(8) // 2 levels
           return Promise.resolve(0)
         },
       })
