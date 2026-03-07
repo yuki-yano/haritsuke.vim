@@ -3,36 +3,12 @@
  */
 
 import { assertEquals, describe, it, spy } from "../deps/test.ts"
-import type { Denops } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import { generatePasteCommand, initializeRounderForPaste, saveUndoFile } from "../core/paste-preparation.ts"
 import type { PreparePasteData } from "../core/paste-preparation.ts"
 import type { Rounder } from "../core/rounder.ts"
-import { createMockPluginState } from "./test-helpers.ts"
+import { createMockDenops, createMockLogger, createMockPluginState } from "./test-helpers.ts"
 import { createMockVimApi } from "../vim/vim-api.ts"
-
-// Mock Denops
-const createMockDenops = (callHandler?: (fn: string, ...args: unknown[]) => Promise<unknown>): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy(() => Promise.resolve()),
-    call: spy(callHandler || (() => Promise.resolve())),
-  } as unknown as Denops
-}
-
-// Mock logger
-const createMockLogger = () => {
-  const logs: Array<{ category: string; message: string; data?: unknown }> = []
-  return {
-    log: (category: string, message: string, data?: unknown) => {
-      logs.push({ category, message, data })
-    },
-    error: () => {},
-    time: () => {},
-    timeEnd: () => {},
-    getLogs: () => logs,
-  }
-}
 
 describe("paste preparation", () => {
   describe("generatePasteCommand", () => {
@@ -72,15 +48,17 @@ describe("paste preparation", () => {
 
   describe("saveUndoFile", () => {
     it("creates temp file when undo tree has entries", async () => {
-      const mockDenops = createMockDenops((fn: string) => {
-        if (fn === "undotree") {
-          return Promise.resolve({
-            seq_cur: 5,
-            seq_last: 5,
-            entries: [1, 2, 3, 4, 5],
-          })
-        }
-        return Promise.resolve()
+      const mockDenops = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "undotree") {
+            return Promise.resolve({
+              seq_cur: 5,
+              seq_last: 5,
+              entries: [1, 2, 3, 4, 5],
+            })
+          }
+          return Promise.resolve()
+        },
       })
       const mockLogger = createMockLogger()
 
@@ -109,15 +87,17 @@ describe("paste preparation", () => {
     })
 
     it("returns undefined when undo tree is empty", async () => {
-      const mockDenops = createMockDenops((fn: string) => {
-        if (fn === "undotree") {
-          return Promise.resolve({
-            seq_cur: 0,
-            seq_last: 0,
-            entries: [],
-          })
-        }
-        return Promise.resolve()
+      const mockDenops = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "undotree") {
+            return Promise.resolve({
+              seq_cur: 0,
+              seq_last: 0,
+              entries: [],
+            })
+          }
+          return Promise.resolve()
+        },
       })
       const mockLogger = createMockLogger()
 
@@ -168,13 +148,15 @@ describe("paste preparation", () => {
       })
 
       // Create mockDenops with handler for bufnr and getpos
-      const mockDenopsWithHandler = createMockDenops((fn: string) => {
-        if (fn === "bufnr") {
-          return Promise.resolve(1)
-        } else if (fn === "getpos") {
-          return Promise.resolve([0, 10, 5, 0])
-        }
-        return Promise.resolve()
+      const mockDenopsWithHandler = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "bufnr") {
+            return Promise.resolve(1)
+          } else if (fn === "getpos") {
+            return Promise.resolve([0, 10, 5, 0])
+          }
+          return Promise.resolve()
+        },
       })
 
       const data: PreparePasteData = {
@@ -234,13 +216,15 @@ describe("paste preparation", () => {
         }),
       })
 
-      const mockDenops = createMockDenops((fn: string) => {
-        if (fn === "bufnr") {
-          return Promise.resolve(1)
-        } else if (fn === "getpos") {
-          return Promise.resolve([0, 1, 1, 0])
-        }
-        return Promise.resolve()
+      const mockDenops = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "bufnr") {
+            return Promise.resolve(1)
+          } else if (fn === "getpos") {
+            return Promise.resolve([0, 1, 1, 0])
+          }
+          return Promise.resolve()
+        },
       })
 
       const data: PreparePasteData = {

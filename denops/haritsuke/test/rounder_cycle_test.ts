@@ -4,15 +4,7 @@
 
 import { assertEquals, assertExists, describe, it } from "../deps/test.ts"
 import { createRounder } from "../core/rounder.ts"
-import type { YankEntry } from "../types.ts"
-
-// Helper to create test entries
-const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
-  id,
-  content,
-  regtype: "v",
-  timestamp: timestamp || Date.now(),
-})
+import { createTestYankEntry } from "./test-helpers.ts"
 
 describe("rounder", () => {
   it("detailed cycle test: can cycle through all entries", async () => {
@@ -20,11 +12,11 @@ describe("rounder", () => {
 
     // Create 5 entries (newest to oldest)
     const entries = [
-      createTestEntry("5", "entry5 (newest)", 5000),
-      createTestEntry("4", "entry4", 4000),
-      createTestEntry("3", "entry3", 3000),
-      createTestEntry("2", "entry2", 2000),
-      createTestEntry("1", "entry1 (oldest)", 1000),
+      createTestYankEntry({ id: "5", content: "entry5 (newest)", timestamp: 5000 }),
+      createTestYankEntry({ id: "4", content: "entry4", timestamp: 4000 }),
+      createTestYankEntry({ id: "3", content: "entry3", timestamp: 3000 }),
+      createTestYankEntry({ id: "2", content: "entry2", timestamp: 2000 }),
+      createTestYankEntry({ id: "1", content: "entry1 (oldest)", timestamp: 1000 }),
     ]
 
     console.log("\n=== Test: Cycle through all entries ===")
@@ -95,11 +87,11 @@ describe("rounder", () => {
     const rounder = createRounder(null)
 
     const entries = [
-      createTestEntry("5", "newest", 5000),
-      createTestEntry("4", "entry4", 4000),
-      createTestEntry("3", "entry3", 3000),
-      createTestEntry("2", "entry2", 2000),
-      createTestEntry("1", "oldest", 1000),
+      createTestYankEntry({ id: "5", content: "newest", timestamp: 5000 }),
+      createTestYankEntry({ id: "4", content: "entry4", timestamp: 4000 }),
+      createTestYankEntry({ id: "3", content: "entry3", timestamp: 3000 }),
+      createTestYankEntry({ id: "2", content: "entry2", timestamp: 2000 }),
+      createTestYankEntry({ id: "1", content: "oldest", timestamp: 1000 }),
     ]
 
     // Paste the newest entry
@@ -156,9 +148,9 @@ describe("rounder", () => {
     const rounder = createRounder(null)
 
     const entries = [
-      createTestEntry("3", "entry3", 3000),
-      createTestEntry("2", "entry2", 2000),
-      createTestEntry("1", "entry1", 1000),
+      createTestYankEntry({ id: "3", content: "entry3", timestamp: 3000 }),
+      createTestYankEntry({ id: "2", content: "entry2", timestamp: 2000 }),
+      createTestYankEntry({ id: "1", content: "entry1", timestamp: 1000 }),
     ]
 
     await rounder.start(entries, { mode: "p", count: 1, register: '"' })

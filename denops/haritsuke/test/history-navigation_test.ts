@@ -7,30 +7,7 @@ import type { Denops } from "../deps/denops.ts"
 import { navigateNext, navigatePrev } from "../core/history-navigation.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import type { YankEntry } from "../types.ts"
-import { createMockPluginState } from "./test-helpers.ts"
-
-// Mock Denops
-const createMockDenops = (callHandler?: (fn: string, ...args: unknown[]) => Promise<unknown>): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy(() => Promise.resolve()),
-    call: spy(callHandler || (() => Promise.resolve())),
-  } as unknown as Denops
-}
-
-// Mock logger
-const createMockLogger = () => {
-  const logs: Array<{ category: string; message: string; data?: unknown }> = []
-  return {
-    log: (category: string, message: string, data?: unknown) => {
-      logs.push({ category, message, data })
-    },
-    error: () => {},
-    time: () => {},
-    timeEnd: () => {},
-    getLogs: () => logs,
-  }
-}
+import { createMockDenops, createMockLogger, createMockPluginState } from "./test-helpers.ts"
 
 describe("history navigation", () => {
   describe("navigatePrev", () => {
@@ -62,11 +39,13 @@ describe("history navigation", () => {
     })
 
     it("applies previous entry when rounder is active", async () => {
-      const mockDenops = createMockDenops((fn: string) => {
-        if (fn === "bufnr") {
-          return Promise.resolve(1)
-        }
-        return Promise.resolve()
+      const mockDenops = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "bufnr") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve()
+        },
       })
       const mockLogger = createMockLogger()
       const syncIfNeededSpy = spy(() => Promise.resolve(false))
@@ -142,11 +121,13 @@ describe("history navigation", () => {
 
   describe("navigateNext", () => {
     it("applies next entry when rounder is active", async () => {
-      const mockDenops = createMockDenops((fn: string) => {
-        if (fn === "bufnr") {
-          return Promise.resolve(1)
-        }
-        return Promise.resolve()
+      const mockDenops = createMockDenops({
+        call: (fn: string) => {
+          if (fn === "bufnr") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve()
+        },
       })
       const mockLogger = createMockLogger()
       const syncIfNeededSpy = spy(() => Promise.resolve(false))

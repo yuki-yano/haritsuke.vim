@@ -4,26 +4,18 @@
 
 import { assertEquals, describe, it } from "../deps/test.ts"
 import { createYankCache } from "../data/cache.ts"
-import type { YankEntry } from "../types.ts"
-
-// Helper to create test entries
-const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
-  id,
-  content,
-  regtype: "v",
-  timestamp: timestamp || Date.now(),
-})
+import { createTestYankEntry } from "./test-helpers.ts"
 
 describe("cache - reordering", () => {
   it("selected entry should move to front without removing the original newest", () => {
     const cache = createYankCache(10)
 
     // Add 5 entries
-    const entry1 = createTestEntry("1", "oldest", 1000)
-    const entry2 = createTestEntry("2", "second", 2000)
-    const entry3 = createTestEntry("3", "middle", 3000)
-    const entry4 = createTestEntry("4", "fourth", 4000)
-    const entry5 = createTestEntry("5", "newest", 5000)
+    const entry1 = createTestYankEntry({ id: "1", content: "oldest", timestamp: 1000 })
+    const entry2 = createTestYankEntry({ id: "2", content: "second", timestamp: 2000 })
+    const entry3 = createTestYankEntry({ id: "3", content: "middle", timestamp: 3000 })
+    const entry4 = createTestYankEntry({ id: "4", content: "fourth", timestamp: 4000 })
+    const entry5 = createTestYankEntry({ id: "5", content: "newest", timestamp: 5000 })
 
     cache.add(entry1)
     cache.add(entry2)
@@ -62,8 +54,8 @@ describe("cache - reordering", () => {
   it("newest entry re-added should stay at front", () => {
     const cache = createYankCache(10)
 
-    const entry1 = createTestEntry("1", "oldest", 1000)
-    const entry2 = createTestEntry("2", "newest", 2000)
+    const entry1 = createTestYankEntry({ id: "1", content: "oldest", timestamp: 1000 })
+    const entry2 = createTestYankEntry({ id: "2", content: "newest", timestamp: 2000 })
 
     cache.add(entry1)
     cache.add(entry2)
@@ -88,9 +80,9 @@ describe("cache - reordering", () => {
   it("duplicate entries are allowed and added as new", () => {
     const cache = createYankCache(10)
 
-    const entry1 = createTestEntry("1", "content", 1000)
-    const entry2 = createTestEntry("2", "content", 2000) // Same content
-    const entry3 = createTestEntry("3", "content", 3000) // Same content
+    const entry1 = createTestYankEntry({ id: "1", content: "content", timestamp: 1000 })
+    const entry2 = createTestYankEntry({ id: "2", content: "content", timestamp: 2000 }) // Same content
+    const entry3 = createTestYankEntry({ id: "3", content: "content", timestamp: 3000 }) // Same content
 
     cache.add(entry1)
     cache.add(entry2)
@@ -108,7 +100,7 @@ describe("cache - moveToFront", () => {
   it("non-existent entry returns false", () => {
     const cache = createYankCache(10)
 
-    const entry1 = createTestEntry("1", "content", 1000)
+    const entry1 = createTestYankEntry({ id: "1", content: "content", timestamp: 1000 })
     cache.add(entry1)
 
     const moved = cache.moveToFront("999")

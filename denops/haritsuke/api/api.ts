@@ -7,6 +7,7 @@ import type { PluginState } from "../state/plugin-state.ts"
 import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
 import { navigateNext, navigatePrev } from "../core/history-navigation.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
+import { getRounderRuntimeState } from "../state/plugin-state-context.ts"
 import { parseTextYankEvent } from "./args.ts"
 import { createPasteActions } from "./paste-actions.ts"
 import { createPluginRuntime } from "./plugin-runtime.ts"
@@ -53,14 +54,15 @@ export const createApi = (denops: Denops, state: PluginState) => {
   }
 
   const isActive = async (_args: unknown): Promise<boolean> => {
-    if (!state.rounderManager || !state.vimApi) {
+    const runtimeState = getRounderRuntimeState(state)
+    if (!runtimeState) {
       return false
     }
 
     return await withErrorHandling(
       async () => {
-        const bufnr = await state.vimApi!.bufnr("%")
-        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
+        const bufnr = await runtimeState.vimApi.bufnr("%")
+        const rounder = await runtimeState.rounderManager.getRounder(denops, bufnr)
         return rounder.isActive()
       },
       "api isActive",

@@ -4,38 +4,13 @@
  */
 
 import { assert, assertEquals, assertSpyCall, describe, it, spy } from "../deps/test.ts"
-import type { Denops } from "../deps/denops.ts"
 import { createPasteHandler } from "../core/paste-handler.ts"
 import { createRounder } from "../core/rounder.ts"
 import type { YankEntry } from "../types.ts"
 import type { VimApi } from "../vim/vim-api.ts"
 import { createMockVimApi } from "../vim/vim-api.ts"
 import type { PasteHandlerCallbacks } from "../core/paste-handler.ts"
-
-// Mock callbacks
-const createMockCallbacks = (): PasteHandlerCallbacks => ({
-  applyHighlight: spy(() => Promise.resolve()),
-  clearHighlight: spy(() => Promise.resolve()),
-})
-
-const createMockDenops = (): Denops => {
-  return {
-    call: spy((fn: string) => {
-      if (fn === "bufnr") {
-        return Promise.resolve(1)
-      }
-      return Promise.resolve()
-    }),
-  } as unknown as Denops
-}
-
-// Helper to create test entries
-const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
-  id,
-  content,
-  regtype: "v",
-  timestamp: timestamp || Date.now(),
-})
+import { createMockDenops, createMockPasteHandlerCallbacks, createTestYankEntry } from "./test-helpers.ts"
 
 describe("createPasteHandler", () => {
   describe("applyHistoryEntry", () => {
@@ -81,7 +56,7 @@ describe("createPasteHandler", () => {
       const rounder = createRounder(null)
 
       // Apply history entry
-      const entry = createTestEntry("2", "new content", 2000)
+      const entry = createTestYankEntry({ id: "2", content: "new content", timestamp: 2000 })
       await pasteHandler.applyHistoryEntry(
         createMockDenops(),
         entry,
@@ -118,7 +93,7 @@ describe("createPasteHandler", () => {
     })
 
     it("manages _haritsuke_applying_history flag", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       // Track setGlobalVar calls
       const globalVarCalls: Array<{ name: string; value: unknown }> = []
@@ -181,7 +156,7 @@ describe("createPasteHandler", () => {
     })
 
     it("clears flag on error", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       // Track setGlobalVar calls
       const globalVarCalls: Array<{ name: string; value: unknown }> = []
@@ -242,7 +217,7 @@ describe("createPasteHandler", () => {
     })
 
     it("applies indent adjustment for line-wise paste", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       // Mock VimApi with necessary methods
       const mockVimApi = createMockVimApi({
@@ -306,7 +281,7 @@ describe("createPasteHandler", () => {
     })
 
     it("skips indent adjustment for character-wise paste", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),
@@ -347,7 +322,7 @@ describe("createPasteHandler", () => {
     })
 
     it("skips indent adjustment when smartIndent is disabled", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),
@@ -388,7 +363,7 @@ describe("createPasteHandler", () => {
     })
 
     it("uses temporary smart indent setting from rounder when available", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),
@@ -450,7 +425,7 @@ describe("createPasteHandler", () => {
     })
 
     it("uses saved base indent when available with temporary smart indent", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),
@@ -497,7 +472,7 @@ describe("createPasteHandler", () => {
     })
 
     it("respects temporary smart indent false even when global is true", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
 
       const mockVimApi = createMockVimApi({
         cmd: spy(() => Promise.resolve()),

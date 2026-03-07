@@ -6,32 +6,8 @@
 import { assertEquals, describe, it, spy } from "../deps/test.ts"
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import type { Denops } from "../deps/denops.ts"
 import { createMockVimApi } from "../vim/vim-api.ts"
-import { createMockPluginState } from "./test-helpers.ts"
-
-// Mock Denops with proper fn module
-const createMockDenops = (): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy((expr: string) => {
-      if (expr === "b:changedtick") return Promise.resolve(100)
-      return Promise.resolve(1)
-    }),
-    call: spy((fn: string, ...args: unknown[]) => {
-      if (fn === "bufnr" && args[0] === "%") return Promise.resolve(1)
-      if (fn === "getpos" && args[0] === ".") return Promise.resolve([0, 10, 5, 0])
-      if (fn === "line" && args[0] === ".") return Promise.resolve(10)
-      if (fn === "line" && args[0] === "$") return Promise.resolve(100)
-      if (fn === "getline" && args[0] === ".") return Promise.resolve("  const result = ")
-      if (fn === "getpos") return Promise.resolve([0, 1, 1, 0])
-      if (fn === "undotree") return Promise.resolve({ seq_cur: 0, seq_last: 0, entries: [] })
-      return Promise.resolve()
-    }),
-    batch: spy(() => Promise.resolve()),
-    dispatch: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
+import { createMockDenops, createMockPluginState } from "./test-helpers.ts"
 
 describe("api preparePaste", () => {
   describe("smart indent for initial paste", () => {
@@ -91,7 +67,22 @@ describe("api preparePaste", () => {
         pasteHandler: {} as unknown as PluginState["pasteHandler"],
       })
 
-      const denops = createMockDenops()
+      const denops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "b:changedtick") return Promise.resolve(100)
+          return Promise.resolve(1)
+        },
+        call: (fn: string, ...args: unknown[]) => {
+          if (fn === "bufnr" && args[0] === "%") return Promise.resolve(1)
+          if (fn === "getpos" && args[0] === ".") return Promise.resolve([0, 10, 5, 0])
+          if (fn === "line" && args[0] === ".") return Promise.resolve(10)
+          if (fn === "line" && args[0] === "$") return Promise.resolve(100)
+          if (fn === "getline" && args[0] === ".") return Promise.resolve("  const result = ")
+          if (fn === "getpos") return Promise.resolve([0, 1, 1, 0])
+          if (fn === "undotree") return Promise.resolve({ seq_cur: 0, seq_last: 0, entries: [] })
+          return Promise.resolve()
+        },
+      })
       const api = createApi(denops, state)
 
       // Execute preparePaste

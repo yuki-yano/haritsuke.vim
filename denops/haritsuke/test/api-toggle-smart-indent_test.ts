@@ -5,26 +5,8 @@
 import { assertEquals, assertSpyCall, describe, it, spy } from "../deps/test.ts"
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import type { Denops } from "../deps/denops.ts"
-import { createMockPluginState } from "./test-helpers.ts"
+import { createMockDenops, createMockPluginState } from "./test-helpers.ts"
 import type { YankEntry } from "../types.ts"
-
-// Mock Denops
-const createMockDenops = (): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy((expr: string) => {
-      if (expr === "b:changedtick") return Promise.resolve(100)
-      return Promise.resolve(1)
-    }),
-    call: spy((fn: string, ...args: unknown[]) => {
-      if (fn === "bufnr" && args[0] === "%") return Promise.resolve(1)
-      return Promise.resolve()
-    }),
-    batch: spy(() => Promise.resolve()),
-    dispatch: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
 
 describe("api toggleSmartIndent", () => {
   it("toggles smart_indent setting when rounder is active", async () => {
@@ -81,7 +63,16 @@ describe("api toggleSmartIndent", () => {
       } as unknown as PluginState["pasteHandler"],
     })
 
-    const denops = createMockDenops()
+    const denops = createMockDenops({
+      eval: (expr: string) => {
+        if (expr === "b:changedtick") return Promise.resolve(100)
+        return Promise.resolve(1)
+      },
+      call: (fn: string, ...args: unknown[]) => {
+        if (fn === "bufnr" && args[0] === "%") return Promise.resolve(1)
+        return Promise.resolve()
+      },
+    })
     const api = createApi(denops, state)
 
     // Initial state should be true

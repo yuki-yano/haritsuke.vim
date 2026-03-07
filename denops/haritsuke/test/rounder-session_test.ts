@@ -1,25 +1,9 @@
 import { assertEquals, assertSpyCalls, describe, it, spy } from "../deps/test.ts"
-import type { Denops } from "../deps/denops.ts"
 import type { Rounder } from "../core/rounder.ts"
 import { createYankCache } from "../data/cache.ts"
 import { createRounderSessionService } from "../core/rounder-session.ts"
 import { createMockFileSystemApi, createMockVimApi } from "../vim/vim-api.ts"
-
-const createMockDenops = (): Denops => {
-  return {
-    call: spy((fn: string) => {
-      if (fn === "bufnr") {
-        return Promise.resolve(1)
-      }
-      if (fn === "setbufvar") {
-        return Promise.resolve()
-      }
-      return Promise.resolve()
-    }),
-    cmd: spy(() => Promise.resolve()),
-    eval: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
+import { createMockDenops } from "./test-helpers.ts"
 
 describe("createRounderSessionService", () => {
   it("starts a new rounder session with filtered register entries", async () => {

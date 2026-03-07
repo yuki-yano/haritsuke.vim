@@ -5,6 +5,7 @@
 
 import type { Denops } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
+import { requireRounderSessionRuntimeState } from "../state/plugin-state-context.ts"
 import type { Rounder } from "./rounder.ts"
 import { createRounderSessionService } from "./rounder-session.ts"
 
@@ -70,10 +71,11 @@ export const initializeRounderForPaste = async (
     clearHighlight: (denops: Denops, state: PluginState) => Promise<void>
   },
 ): Promise<void> => {
+  const runtimeState = requireRounderSessionRuntimeState(state)
   const service = createRounderSessionService({
-    cache: state.cache!,
-    vimApi: state.vimApi!,
-    fileSystemApi: state.fileSystemApi!,
+    cache: runtimeState.cache,
+    vimApi: runtimeState.vimApi,
+    fileSystemApi: runtimeState.fileSystemApi,
     logger: state.logger,
     shouldUseRegionHighlight: () => state.config.use_region_hl ?? false,
     callbacks: {
@@ -96,10 +98,11 @@ export const processPasteCompletion = async (
     applyHighlight: (denops: Denops, state: PluginState, register: string) => Promise<void>
   },
 ): Promise<void> => {
+  const runtimeState = requireRounderSessionRuntimeState(state)
   const service = createRounderSessionService({
-    cache: state.cache!,
-    vimApi: state.vimApi!,
-    fileSystemApi: state.fileSystemApi!,
+    cache: runtimeState.cache,
+    vimApi: runtimeState.vimApi,
+    fileSystemApi: runtimeState.fileSystemApi,
     logger: state.logger,
     shouldUseRegionHighlight: () => state.config.use_region_hl ?? false,
     callbacks: {

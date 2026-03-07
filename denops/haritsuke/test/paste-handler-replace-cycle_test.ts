@@ -4,29 +4,11 @@
  */
 
 import { assertEquals, describe, it, spy } from "../deps/test.ts"
-import type { Denops } from "../deps/denops.ts"
 import { createPasteHandler } from "../core/paste-handler.ts"
 import { createRounder } from "../core/rounder.ts"
 import type { YankEntry } from "../types.ts"
 import { createMockVimApi } from "../vim/vim-api.ts"
-import type { PasteHandlerCallbacks } from "../core/paste-handler.ts"
-
-// Mock callbacks
-const createMockCallbacks = (): PasteHandlerCallbacks => ({
-  applyHighlight: spy(() => Promise.resolve()),
-  clearHighlight: spy(() => Promise.resolve()),
-})
-
-const createMockDenops = (): Denops => {
-  return {
-    call: spy((fn: string) => {
-      if (fn === "bufnr") {
-        return Promise.resolve(1)
-      }
-      return Promise.resolve()
-    }),
-  } as unknown as Denops
-}
+import { createMockDenops, createMockPasteHandlerCallbacks } from "./test-helpers.ts"
 
 // Helper to create test entries
 const _createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
@@ -39,7 +21,7 @@ const _createTestEntry = (id: string, content: string, timestamp?: number): Yank
 describe("PasteHandler - Replace Operation Cycling", () => {
   describe("applyHistoryEntry with replace info", () => {
     it("handles replace operation with singleUndo during cycle", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
       const commands: string[] = []
 
       // Mock VimApi to track commands
@@ -129,7 +111,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     })
 
     it("handles line-wise replace operation correctly", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
       const commands: string[] = []
 
       const mockVimApi = createMockVimApi({
@@ -198,7 +180,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     })
 
     it("handles block-wise replace operation correctly", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
       const commands: string[] = []
 
       const mockVimApi = createMockVimApi({
@@ -268,7 +250,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     })
 
     it("handles normal cycle without replace info", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
       const commands: string[] = []
 
       const mockVimApi = createMockVimApi({
@@ -327,7 +309,7 @@ describe("PasteHandler - Replace Operation Cycling", () => {
     })
 
     it("handles replace with singleUndo disabled", async () => {
-      const callbacks = createMockCallbacks()
+      const callbacks = createMockPasteHandlerCallbacks()
       const commands: string[] = []
 
       const mockVimApi = createMockVimApi({

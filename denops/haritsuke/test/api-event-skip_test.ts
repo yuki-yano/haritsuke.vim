@@ -3,49 +3,25 @@
  */
 
 import { assertEquals, describe, it, spy } from "../deps/test.ts"
-import type { Denops } from "../deps/denops.ts"
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import { createMockPluginState } from "./test-helpers.ts"
-
-type LogEntry = { category: string; message: string }
-
-// Mock logger to track log calls
-const createMockLogger = () => {
-  const logs: LogEntry[] = []
-  return {
-    log: (category: string, message: string) => {
-      logs.push({ category, message })
-    },
-    error: () => {},
-    time: () => {},
-    timeEnd: () => {},
-    getLogs: () => logs,
-  }
-}
-
-// Mock Denops
-const createMockDenops = (applyingHistory: number = 0): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy((expr: string) => {
-      if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
-        return Promise.resolve(applyingHistory)
-      }
-      if (expr === "b:changedtick") {
-        return Promise.resolve(10)
-      }
-      return Promise.resolve(0)
-    }),
-    call: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
+import { createMockDenops, createMockLogger, createMockPluginState, type MockLogEntry } from "./test-helpers.ts"
 
 describe("createApi - event processing skip during history application", () => {
   describe("onCursorMoved", () => {
     it("skips processing when _haritsuke_applying_history is set", async () => {
       const mockLogger = createMockLogger()
-      const mockDenops = createMockDenops(1) // _haritsuke_applying_history = 1
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(1)
+          }
+          if (expr === "b:changedtick") {
+            return Promise.resolve(10)
+          }
+          return Promise.resolve(0)
+        },
+      })
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -60,7 +36,7 @@ describe("createApi - event processing skip during history application", () => {
       // Check that processing was skipped
       const logs = mockLogger.getLogs()
       const skipLog = logs.find(
-        (log: LogEntry) => log.category === "cursor" && log.message === "Skipping onCursorMoved - applying history",
+        (log: MockLogEntry) => log.category === "cursor" && log.message === "Skipping onCursorMoved - applying history",
       )
       assertEquals(!!skipLog, true, "Should log that processing was skipped")
 
@@ -74,7 +50,17 @@ describe("createApi - event processing skip during history application", () => {
 
     it("processes normally when _haritsuke_applying_history is not set", async () => {
       const mockLogger = createMockLogger()
-      const mockDenops = createMockDenops(0) // _haritsuke_applying_history = 0
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(0)
+          }
+          if (expr === "b:changedtick") {
+            return Promise.resolve(10)
+          }
+          return Promise.resolve(0)
+        },
+      })
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -90,13 +76,13 @@ describe("createApi - event processing skip during history application", () => {
       // Check that processing was NOT skipped
       const logs = mockLogger.getLogs()
       const skipLog = logs.find(
-        (log: LogEntry) => log.category === "cursor" && log.message === "Skipping onCursorMoved - applying history",
+        (log: MockLogEntry) => log.category === "cursor" && log.message === "Skipping onCursorMoved - applying history",
       )
       assertEquals(!!skipLog, false, "Should not log skip message")
 
       // Should have normal cursor moved log
       const normalLog = logs.find(
-        (log: LogEntry) => log.category === "cursor" && log.message === "onCursorMoved called",
+        (log: MockLogEntry) => log.category === "cursor" && log.message === "onCursorMoved called",
       )
       assertEquals(!!normalLog, true, "Should have normal processing log")
     })
@@ -105,7 +91,14 @@ describe("createApi - event processing skip during history application", () => {
   describe("onStopRounder", () => {
     it("skips processing when _haritsuke_applying_history is set", async () => {
       const mockLogger = createMockLogger()
-      const mockDenops = createMockDenops(1) // _haritsuke_applying_history = 1
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve(0)
+        },
+      })
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -120,14 +113,21 @@ describe("createApi - event processing skip during history application", () => {
       // Check that processing was skipped
       const logs = mockLogger.getLogs()
       const skipLog = logs.find(
-        (log: LogEntry) => log.category === "event" && log.message === "Skipping onStopRounder - applying history",
+        (log: MockLogEntry) => log.category === "event" && log.message === "Skipping onStopRounder - applying history",
       )
       assertEquals(!!skipLog, true, "Should log that processing was skipped")
     })
 
     it("processes normally when _haritsuke_applying_history is not set", async () => {
       const mockLogger = createMockLogger()
-      const mockDenops = createMockDenops(0) // _haritsuke_applying_history = 0
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(0)
+          }
+          return Promise.resolve(0)
+        },
+      })
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -143,13 +143,13 @@ describe("createApi - event processing skip during history application", () => {
       // Check that processing was NOT skipped
       const logs = mockLogger.getLogs()
       const skipLog = logs.find(
-        (log: LogEntry) => log.category === "event" && log.message === "Skipping onStopRounder - applying history",
+        (log: MockLogEntry) => log.category === "event" && log.message === "Skipping onStopRounder - applying history",
       )
       assertEquals(!!skipLog, false, "Should not log skip message")
 
       // Should have normal event log
       const normalLog = logs.find(
-        (log: LogEntry) => log.category === "event" && log.message === "onStopRounder called",
+        (log: MockLogEntry) => log.category === "event" && log.message === "onStopRounder called",
       )
       assertEquals(!!normalLog, true, "Should have normal processing log")
     })

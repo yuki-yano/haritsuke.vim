@@ -4,6 +4,7 @@ import type { PluginState } from "../state/plugin-state.ts"
 import { saveUndoFile } from "../core/paste-preparation.ts"
 import { createReplaceSessionService } from "../core/replace-session.ts"
 import type { RounderSessionService } from "../core/rounder-session.ts"
+import { getPasteRuntimeState } from "../state/plugin-state-context.ts"
 import { extractFirstArg } from "./args.ts"
 
 export type ReplaceActions = {
@@ -11,7 +12,7 @@ export type ReplaceActions = {
 }
 
 export type ReplaceActionHelpers = {
-  getRounderSession: () => RounderSessionService | null
+  getRounderSession: () => RounderSessionService
 }
 
 export const createReplaceActions = (
@@ -66,14 +67,11 @@ export const createReplaceActions = (
       singleUndo: state.config.operator_replace_single_undo,
     })
 
-    if (state.rounderManager && state.cache) {
-      const bufnr = await state.vimApi.bufnr("%")
-      const rounder = await state.rounderManager.getRounder(denops, bufnr)
+    const pasteRuntime = getPasteRuntimeState(state)
+    if (pasteRuntime) {
+      const bufnr = await pasteRuntime.vimApi.bufnr("%")
+      const rounder = await pasteRuntime.rounderManager.getRounder(denops, bufnr)
       const rounderSession = helpers.getRounderSession()
-      if (!rounderSession) {
-        throw new Error("Rounder session service is not available")
-      }
-
       const pasteInfo = {
         mode: result.pasteCommand,
         vmode: visualMode ? "v" : "n",

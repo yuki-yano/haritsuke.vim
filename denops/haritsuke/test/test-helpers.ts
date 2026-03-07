@@ -3,7 +3,10 @@
  */
 
 import { spy } from "../deps/test.ts"
+import type { Denops } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
+import type { YankEntry } from "../types.ts"
+import type { PasteHandlerCallbacks } from "../core/paste-handler.ts"
 import { createMockFileSystemApi, createMockVimApi, type VimApi } from "../vim/vim-api.ts"
 import { createYankCache } from "../data/cache.ts"
 
@@ -77,6 +80,78 @@ export const createMockPluginState = (overrides?: Partial<PluginState>): PluginS
   }
 
   return { ...base, ...overrides } as PluginState
+}
+
+export type MockLogEntry = {
+  category: string
+  message: string
+  data?: unknown
+}
+
+export const createMockLogger = () => {
+  const logs: MockLogEntry[] = []
+  return {
+    log: spy((category: string, message: string, data?: unknown) => {
+      logs.push({ category, message, data })
+    }),
+    error: spy(() => {}),
+    time: spy(() => {}),
+    timeEnd: spy(() => {}),
+    getLogs: () => logs,
+  }
+}
+
+export type DenopsMockHandlers = {
+  cmd?: (cmd: string) => Promise<unknown> | unknown
+  eval?: (expr: string) => Promise<unknown> | unknown
+  call?: (fn: string, ...args: unknown[]) => Promise<unknown> | unknown
+  batch?: (...args: unknown[]) => Promise<unknown> | unknown
+  dispatch?: (...args: unknown[]) => Promise<unknown> | unknown
+}
+
+export const createMockDenops = (handlers: DenopsMockHandlers = {}): Denops => {
+  return {
+    cmd: spy((cmd: string) => Promise.resolve(handlers.cmd ? handlers.cmd(cmd) : undefined)),
+    eval: spy((expr: string) => {
+      if (handlers.eval) {
+        return Promise.resolve(handlers.eval(expr))
+      }
+      if (expr === "get(g:, '_haritsuke_applying_history', 0)") return Promise.resolve(0)
+      if (expr === "b:changedtick") return Promise.resolve(1)
+      return Promise.resolve(1)
+    }),
+    call: spy((fn: string, ...args: unknown[]) => {
+      if (handlers.call) {
+        return Promise.resolve(handlers.call(fn, ...args))
+      }
+      if (fn === "bufnr" && args[0] === "%") return Promise.resolve(1)
+      if (fn === "getpos") return Promise.resolve([0, 1, 1, 0])
+      if (fn === "line") return Promise.resolve(1)
+      if (fn === "getline") return Promise.resolve("")
+      if (fn === "undotree") return Promise.resolve({ seq_cur: 0, seq_last: 0, entries: [] })
+      return Promise.resolve(undefined)
+    }),
+    batch: spy((...args: unknown[]) => Promise.resolve(handlers.batch ? handlers.batch(...args) : undefined)),
+    dispatch: spy((...args: unknown[]) => Promise.resolve(handlers.dispatch ? handlers.dispatch(...args) : undefined)),
+  } as unknown as Denops
+}
+
+export const createTestYankEntry = (overrides: Partial<YankEntry> = {}): YankEntry => {
+  return {
+    id: "1",
+    content: "test",
+    regtype: "v",
+    timestamp: Date.now(),
+    register: '"',
+    ...overrides,
+  }
+}
+
+export const createMockPasteHandlerCallbacks = (): PasteHandlerCallbacks => {
+  return {
+    applyHighlight: spy(() => Promise.resolve()),
+    clearHighlight: spy(() => Promise.resolve()),
+  }
 }
 
 /**

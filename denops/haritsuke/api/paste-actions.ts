@@ -6,6 +6,7 @@ import { withErrorHandling } from "../utils/error-handling.ts"
 import { adjustContentIndentSmart, resolveSmartIndentBaseIndent } from "../utils/indent-adjuster.ts"
 import { generatePasteCommand, type PreparedPasteInfo, saveUndoFile } from "../core/paste-preparation.ts"
 import type { RounderSessionService } from "../core/rounder-session.ts"
+import { getPasteRuntimeState } from "../state/plugin-state-context.ts"
 import { extractFirstArg } from "./args.ts"
 
 export type PasteActions = {
@@ -16,7 +17,7 @@ export type PasteActions = {
 
 export type PasteActionHelpers = {
   syncIfNeeded: () => Promise<boolean>
-  getRounderSession: () => RounderSessionService | null
+  getRounderSession: () => RounderSessionService
 }
 
 export const createPasteActions = (
@@ -58,7 +59,8 @@ export const createPasteActions = (
           visualMarks,
         })
 
-        if (!state.rounderManager || !state.cache || !state.pasteHandler || !state.vimApi) {
+        const runtimeState = getPasteRuntimeState(state)
+        if (!runtimeState) {
           return generatePasteCommand(data)
         }
 
@@ -67,8 +69,8 @@ export const createPasteActions = (
         if (state.config.smart_indent) {
           await withErrorHandling(
             async () => {
-              const regContent = await state.vimApi!.getreg(data.register) as string
-              const regType = await state.vimApi!.getregtype(data.register) as string
+              const regContent = await runtimeState.vimApi.getreg(data.register) as string
+              const regType = await runtimeState.vimApi.getregtype(data.register) as string
 
               if (regType === "V") {
                 const adjustedContent = await adjustContentIndentSmart(
@@ -79,11 +81,11 @@ export const createPasteActions = (
                     register: data.register,
                     visualMode: data.vmode === "v",
                   },
-                  state.vimApi!,
+                  runtimeState.vimApi,
                   state.logger,
                 )
 
-                await state.vimApi!.setreg(data.register, adjustedContent, regType)
+                await runtimeState.vimApi.setreg(data.register, adjustedContent, regType)
 
                 state.logger?.log("paste", "Applied smart indent for initial paste", {
                   originalLength: regContent.length,
@@ -96,17 +98,13 @@ export const createPasteActions = (
           )
         }
 
-        const bufnr = await state.vimApi.bufnr("%")
-        const rounder = await state.rounderManager.getRounder(denops, bufnr)
+        const bufnr = await runtimeState.vimApi.bufnr("%")
+        const rounder = await runtimeState.rounderManager.getRounder(denops, bufnr)
         const rounderSession = helpers.getRounderSession()
-        if (!rounderSession) {
-          throw new Error("Rounder session service is not available")
-        }
-
         await rounderSession.startForPaste(denops, rounder, data)
 
         if (state.config.smart_indent) {
-          const regType = await state.vimApi.getregtype(data.register) as string
+          const regType = await runtimeState.vimApi.getregtype(data.register) as string
           if (regType === "V") {
             const baseIndent = await resolveSmartIndentBaseIndent(
               {
@@ -115,7 +113,7 @@ export const createPasteActions = (
                 register: data.register,
                 visualMode: data.vmode === "v",
               },
-              state.vimApi,
+              runtimeState.vimApi,
             )
             rounder.setBaseIndent(baseIndent)
             state.logger?.log("paste", "Saved base indent for rounder", { baseIndent })
@@ -144,21 +142,18 @@ export const createPasteActions = (
       async () => {
         state.logger?.log("paste", "onPasteExecuted called")
 
-        if (!state.rounderManager || !preparedPasteInfo || !state.vimApi) {
+        const runtimeState = getPasteRuntimeState(state)
+        if (!runtimeState || !preparedPasteInfo) {
           return
         }
 
-        const bufnr = await state.vimApi.bufnr("%")
-        const rounder = await state.rounderManager.getRounder(denops, bufnr)
+        const bufnr = await runtimeState.vimApi.bufnr("%")
+        const rounder = await runtimeState.rounderManager.getRounder(denops, bufnr)
         if (!rounder.isActive()) {
           return
         }
 
         const rounderSession = helpers.getRounderSession()
-        if (!rounderSession) {
-          throw new Error("Rounder session service is not available")
-        }
-
         await rounderSession.completePaste(denops, rounder, preparedPasteInfo)
 
         state.logger?.log("paste", "Paste executed", {
@@ -173,14 +168,15 @@ export const createPasteActions = (
   }
 
   const toggleSmartIndent = async (_args: unknown): Promise<void> => {
-    if (!state.rounderManager || !state.pasteHandler || !state.vimApi) {
+    const runtimeState = getPasteRuntimeState(state)
+    if (!runtimeState) {
       return
     }
 
     await withErrorHandling(
       async () => {
-        const bufnr = await state.vimApi!.bufnr("%")
-        const rounder = await state.rounderManager!.getRounder(denops, bufnr)
+        const bufnr = await runtimeState.vimApi.bufnr("%")
+        const rounder = await runtimeState.rounderManager.getRounder(denops, bufnr)
 
         if (!rounder.isActive()) {
           state.logger?.log("toggle", "No active rounder, nothing to toggle")
@@ -210,7 +206,7 @@ export const createPasteActions = (
           return
         }
 
-        await state.pasteHandler!.applyHistoryEntry(
+        await runtimeState.pasteHandler.applyHistoryEntry(
           denops,
           currentEntry,
           undoSeq,

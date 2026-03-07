@@ -6,25 +6,8 @@
 import { assertSpyCall, assertSpyCalls, describe, it, spy } from "../deps/test.ts"
 import { createApi } from "../api/api.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import type { Denops } from "../deps/denops.ts"
 import { createMockFileSystemApi, createMockVimApi } from "../vim/vim-api.ts"
-
-// Mock Denops
-const createMockDenops = (): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy((expr: string) => {
-      // Handle _haritsuke_applying_history flag check
-      if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
-        return Promise.resolve(0)
-      }
-      return Promise.resolve(1)
-    }),
-    call: spy(() => Promise.resolve()),
-    batch: spy(() => Promise.resolve()),
-    dispatch: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
+import { createMockDenops } from "./test-helpers.ts"
 
 // Create minimal plugin state
 const createMinimalState = (): PluginState => {
@@ -73,7 +56,14 @@ const createMinimalState = (): PluginState => {
 
 describe("api - onStopRounder", () => {
   it("stops active rounder", async () => {
-    const denops = createMockDenops()
+    const denops = createMockDenops({
+      eval: (expr: string) => {
+        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+          return Promise.resolve(0)
+        }
+        return Promise.resolve(1)
+      },
+    })
     const state = createMinimalState()
     const api = createApi(denops, state)
 
@@ -96,7 +86,14 @@ describe("api - onStopRounder", () => {
   })
 
   it("does nothing when rounder is not active", async () => {
-    const denops = createMockDenops()
+    const denops = createMockDenops({
+      eval: (expr: string) => {
+        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+          return Promise.resolve(0)
+        }
+        return Promise.resolve(1)
+      },
+    })
     const state = createMinimalState()
 
     // Make rounder inactive
@@ -115,7 +112,14 @@ describe("api - onStopRounder", () => {
   })
 
   it("handles missing undo file gracefully", async () => {
-    const denops = createMockDenops()
+    const denops = createMockDenops({
+      eval: (expr: string) => {
+        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+          return Promise.resolve(0)
+        }
+        return Promise.resolve(1)
+      },
+    })
     const state = createMinimalState()
     const api = createApi(denops, state)
     state.fileSystemApi!.remove = spy(() => Promise.reject(new Error("File not found")))

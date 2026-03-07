@@ -13,6 +13,7 @@ import { createPasteHandler } from "../core/paste-handler.ts"
 import { createFileSystemApi, createVimApi } from "../vim/vim-api.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 import type { PluginState } from "../state/plugin-state.ts"
+import { requireRounderSessionRuntimeState } from "../state/plugin-state-context.ts"
 import { assignConfigFromArgs } from "./args.ts"
 
 export type PluginRuntime = {
@@ -21,7 +22,7 @@ export type PluginRuntime = {
   clearHighlight: () => Promise<void>
   applyHighlight: (register: string) => Promise<void>
   stopRounder: (rounder: Rounder, reason: string) => Promise<void>
-  getRounderSession: () => RounderSessionService | null
+  getRounderSession: () => RounderSessionService
 }
 
 export const createPluginRuntime = (
@@ -44,16 +45,13 @@ export const createPluginRuntime = (
     await state.highlightManager.apply(denops, register)
   }
 
-  const getRounderSession = (): RounderSessionService | null => {
-    if (!state.cache || !state.vimApi || !state.fileSystemApi) {
-      return null
-    }
-
+  const getRounderSession = (): RounderSessionService => {
     if (!rounderSession) {
+      const runtimeState = requireRounderSessionRuntimeState(state)
       rounderSession = createRounderSessionService({
-        cache: state.cache,
-        vimApi: state.vimApi,
-        fileSystemApi: state.fileSystemApi,
+        cache: runtimeState.cache,
+        vimApi: runtimeState.vimApi,
+        fileSystemApi: runtimeState.fileSystemApi,
         logger: state.logger,
         shouldUseRegionHighlight: () => state.config.use_region_hl ?? false,
         callbacks: {
@@ -84,9 +82,10 @@ export const createPluginRuntime = (
     }
 
     if (state.highlightManager) {
+      const highlightManager = state.highlightManager
       await withErrorHandling(
         async () => {
-          await state.highlightManager!.clear(denops)
+          await highlightManager.clear(denops)
         },
         "teardown highlight clear",
         state.logger,

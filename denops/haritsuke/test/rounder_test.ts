@@ -5,26 +5,18 @@
 
 import { assertEquals, assertExists, describe, it } from "../deps/test.ts"
 import { createRounder } from "../core/rounder.ts"
-import type { YankEntry } from "../types.ts"
-
-// Helper to create test entries
-const createTestEntry = (id: string, content: string, timestamp?: number): YankEntry => ({
-  id,
-  content,
-  regtype: "v",
-  timestamp: timestamp || Date.now(),
-})
+import { createTestYankEntry } from "./test-helpers.ts"
 
 // Create test data with clear order
 const createTestData = () => {
   // Entries are ordered from newest to oldest
   // Index 0 = newest, Index N = oldest
   return [
-    createTestEntry("5", "fifth (newest)", 5000),
-    createTestEntry("4", "fourth", 4000),
-    createTestEntry("3", "third", 3000),
-    createTestEntry("2", "second", 2000),
-    createTestEntry("1", "first (oldest)", 1000),
+    createTestYankEntry({ id: "5", content: "fifth (newest)", timestamp: 5000 }),
+    createTestYankEntry({ id: "4", content: "fourth", timestamp: 4000 }),
+    createTestYankEntry({ id: "3", content: "third", timestamp: 3000 }),
+    createTestYankEntry({ id: "2", content: "second", timestamp: 2000 }),
+    createTestYankEntry({ id: "1", content: "first (oldest)", timestamp: 1000 }),
   ]
 }
 
@@ -196,7 +188,7 @@ describe("rounder", () => {
 
     it("handles single entry", async () => {
       const rounder = createRounder(null)
-      const entries = [createTestEntry("1", "only entry")]
+      const entries = [createTestYankEntry({ id: "1", content: "only entry" })]
 
       await rounder.start(entries, { mode: "p", count: 1, register: '"' })
 
@@ -269,11 +261,11 @@ describe("rounder", () => {
 
       // Simulate real yank history (newest first)
       const entries = [
-        createTestEntry("10", "const x = 10", 10000),
-        createTestEntry("9", "function test() {}", 9000),
-        createTestEntry("8", "import { foo }", 8000),
-        createTestEntry("7", "// comment", 7000),
-        createTestEntry("6", "console.log()", 6000),
+        createTestYankEntry({ id: "10", content: "const x = 10", timestamp: 10000 }),
+        createTestYankEntry({ id: "9", content: "function test() {}", timestamp: 9000 }),
+        createTestYankEntry({ id: "8", content: "import { foo }", timestamp: 8000 }),
+        createTestYankEntry({ id: "7", content: "// comment", timestamp: 7000 }),
+        createTestYankEntry({ id: "6", content: "console.log()", timestamp: 6000 }),
       ]
 
       // Always starts at the most recent entry

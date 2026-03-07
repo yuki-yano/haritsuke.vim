@@ -6,30 +6,7 @@ import { assertEquals, describe, it, spy } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
 import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import { createMockPluginState } from "./test-helpers.ts"
-
-// Mock Denops
-const createMockDenops = (evalHandler?: (expr: string) => Promise<unknown>): Denops => {
-  return {
-    cmd: spy(() => Promise.resolve()),
-    eval: spy(evalHandler || (() => Promise.resolve())),
-    call: spy(() => Promise.resolve()),
-  } as unknown as Denops
-}
-
-// Mock logger
-const createMockLogger = () => {
-  const logs: Array<{ category: string; message: string; data?: unknown }> = []
-  return {
-    log: (category: string, message: string, data?: unknown) => {
-      logs.push({ category, message, data })
-    },
-    error: () => {},
-    time: () => {},
-    timeEnd: () => {},
-    getLogs: () => logs,
-  }
-}
+import { createMockDenops, createMockLogger, createMockPluginState } from "./test-helpers.ts"
 
 describe("event handlers", () => {
   describe("handleTextYankPost", () => {
@@ -93,11 +70,13 @@ describe("event handlers", () => {
 
   describe("handleCursorMoved", () => {
     it("skips processing when _haritsuke_applying_history is set", async () => {
-      const mockDenops = createMockDenops((expr: string) => {
-        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
-          return Promise.resolve(1)
-        }
-        return Promise.resolve(0)
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve(0)
+        },
       })
 
       const mockLogger = createMockLogger()
@@ -128,11 +107,13 @@ describe("event handlers", () => {
 
   describe("handleStopRounder", () => {
     it("skips processing when _haritsuke_applying_history is set", async () => {
-      const mockDenops = createMockDenops((expr: string) => {
-        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
-          return Promise.resolve(1)
-        }
-        return Promise.resolve(0)
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve(0)
+        },
       })
 
       const mockLogger = createMockLogger()
@@ -163,11 +144,13 @@ describe("event handlers", () => {
     })
 
     it("stops active rounder", async () => {
-      const mockDenops = createMockDenops((expr: string) => {
-        if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(0)
+          }
           return Promise.resolve(0)
-        }
-        return Promise.resolve(0)
+        },
       })
 
       const mockLogger = createMockLogger()
