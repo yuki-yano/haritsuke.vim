@@ -4,6 +4,8 @@ export type YankDatabaseStatements = {
   insert: StatementSync
   selectRecent: StatementSync
   deleteOld: StatementSync
+  upsertRegisterSnapshot: StatementSync
+  selectRegisterSnapshots: StatementSync
 }
 
 export const createYankHistorySchema = (db: DatabaseSync, maxHistory: number): void => {
@@ -34,6 +36,17 @@ export const createYankHistorySchema = (db: DatabaseSync, maxHistory: number): v
       value TEXT NOT NULL,
       updated_at INTEGER DEFAULT (unixepoch() * 1000)
     );
+
+    CREATE TABLE IF NOT EXISTS register_snapshots (
+      register TEXT PRIMARY KEY,
+      regcontents_json TEXT NOT NULL,
+      regtype TEXT NOT NULL,
+      updated_at INTEGER NOT NULL,
+      source_instance_id TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_register_snapshots_updated_at
+      ON register_snapshots(updated_at DESC);
 
     INSERT OR IGNORE INTO settings (key, value) VALUES
       ('schema_version', '1'),
@@ -70,6 +83,22 @@ export const createYankDatabaseStatements = (db: DatabaseSync): YankDatabaseStat
         LIMIT ?
       )
     `),
+    upsertRegisterSnapshot: db.prepare(`
+      INSERT INTO register_snapshots
+      (register, regcontents_json, regtype, updated_at, source_instance_id)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(register) DO UPDATE SET
+        regcontents_json = excluded.regcontents_json,
+        regtype = excluded.regtype,
+        updated_at = excluded.updated_at,
+        source_instance_id = excluded.source_instance_id
+    `),
+    selectRegisterSnapshots: db.prepare(`
+      SELECT
+        register, regcontents_json, regtype, updated_at, source_instance_id
+      FROM register_snapshots
+      ORDER BY register ASC
+    `),
   }
 }
 
@@ -79,4 +108,6 @@ export const clearYankDatabaseStatements = (
   statements.insert = undefined
   statements.selectRecent = undefined
   statements.deleteOld = undefined
+  statements.upsertRegisterSnapshot = undefined
+  statements.selectRegisterSnapshots = undefined
 }

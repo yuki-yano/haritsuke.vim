@@ -18,12 +18,23 @@ export type SyncStatus = {
   entryCount: number
 }
 
+export type RegisterSnapshot = {
+  register: string
+  regcontents: string[]
+  regtype: string
+  updatedAt: number
+  sourceInstanceId: string
+}
+
 export type YankDatabase = {
   init: () => Promise<void>
   add: (entry: Omit<YankEntry, "id" | "size">) => Promise<YankEntry>
   getRecent: (limit?: number) => YankEntry[]
   clear: () => Promise<void>
   getSyncStatus: () => SyncStatus
+  upsertRegisterSnapshot: (snapshot: RegisterSnapshot) => Promise<void>
+  getRegisterSnapshots: () => RegisterSnapshot[]
+  getDataVersion: () => number
   close: () => void
 }
 
@@ -127,6 +138,71 @@ export const createYankDatabase = (
     )
   }
 
+  const upsertRegisterSnapshot = (snapshot: RegisterSnapshot): Promise<void> => {
+    return Promise.resolve().then(() => {
+      const content = snapshot.regcontents.join("\n")
+      const size = calculateContentSize(content)
+      if (!validateContentSize(content, maxDataSize)) {
+        throw new Error(`Register snapshot too large: ${size} bytes (max: ${maxDataSize})`)
+      }
+
+      try {
+        statements.upsertRegisterSnapshot!.run(
+          snapshot.register,
+          JSON.stringify(snapshot.regcontents),
+          snapshot.regtype,
+          snapshot.updatedAt,
+          snapshot.sourceInstanceId,
+        )
+      } catch (error) {
+        throw new Error(
+          `Failed to upsert register snapshot: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+    })
+  }
+
+  const getRegisterSnapshots = (): RegisterSnapshot[] => {
+    return withErrorHandlingSync(
+      () => {
+        const rows = statements.selectRegisterSnapshots!.all() as Array<{
+          register: string
+          regcontents_json: string
+          regtype: string
+          updated_at: number
+          source_instance_id: string
+        }>
+
+        return rows.map((row) => ({
+          register: row.register,
+          regcontents: JSON.parse(row.regcontents_json) as string[],
+          regtype: row.regtype,
+          updatedAt: row.updated_at,
+          sourceInstanceId: row.source_instance_id,
+        }))
+      },
+      "database getRegisterSnapshots",
+      logger,
+      [],
+    )
+  }
+
+  const getDataVersion = (): number => {
+    if (!db) {
+      return 0
+    }
+
+    return withErrorHandlingSync(
+      () => {
+        const result = db!.prepare("PRAGMA data_version").get() as { data_version: number }
+        return result.data_version ?? 0
+      },
+      "database getDataVersion",
+      logger,
+      0,
+    )
+  }
+
   const clear = (): Promise<void> => {
     return withErrorHandling(
       () => {
@@ -135,6 +211,7 @@ export const createYankDatabase = (
         }
 
         db.exec("DELETE FROM yank_history")
+        db.exec("DELETE FROM register_snapshots")
         logger?.log("database", "Cleared all entries from database")
         return Promise.resolve()
       },
@@ -159,6 +236,9 @@ export const createYankDatabase = (
     getRecent,
     clear,
     getSyncStatus,
+    upsertRegisterSnapshot,
+    getRegisterSnapshots,
+    getDataVersion,
     close,
   }
 }

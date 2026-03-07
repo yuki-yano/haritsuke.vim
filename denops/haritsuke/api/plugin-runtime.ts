@@ -3,6 +3,7 @@ import { autocmd, fn } from "../deps/denops.ts"
 import { join } from "../deps/std.ts"
 import { createYankDatabase } from "../data/database.ts"
 import { createYankCache } from "../data/cache.ts"
+import { createRegisterSyncManager } from "../data/register-sync-manager.ts"
 import { createSyncManager } from "../data/sync-manager.ts"
 import { createRounderManager, type Rounder } from "../core/rounder.ts"
 import { createRounderSessionService, type RounderSessionService } from "../core/rounder-session.ts"
@@ -81,6 +82,10 @@ export const createPluginRuntime = (
       state.registerMonitor.reset()
     }
 
+    if (state.registerSyncManager) {
+      state.registerSyncManager.reset()
+    }
+
     if (state.highlightManager) {
       const highlightManager = state.highlightManager
       await withErrorHandling(
@@ -112,6 +117,12 @@ export const createPluginRuntime = (
 
       if (isNvim) {
         helper.define("TermEnter", "*", `call haritsuke#notify('onStopRounder')`)
+      }
+
+      if (state.config.sync_registers) {
+        helper.define("FocusGained", "*", `call haritsuke#notify('onAutoSync')`)
+        helper.define("CursorHold", "*", `call haritsuke#notify('onAutoSync')`)
+        helper.define("CursorHoldI", "*", `call haritsuke#notify('onAutoSync')`)
       }
     })
   }
@@ -151,6 +162,19 @@ export const createPluginRuntime = (
     state.fileSystemApi = createFileSystemApi()
     rounderSession = null
 
+    state.registerSyncManager = state.config.sync_registers
+      ? createRegisterSyncManager(
+        state.database,
+        state.vimApi,
+        {
+          enabled: state.config.sync_registers,
+          registerKeys: state.config.register_keys,
+          sourceInstanceId: crypto.randomUUID(),
+        },
+        state.logger,
+      )
+      : null
+
     state.registerMonitor = createRegisterMonitor(
       state.database,
       state.cache,
@@ -180,6 +204,7 @@ export const createPluginRuntime = (
     )
 
     await setupAutocmds()
+    await state.registerSyncManager?.syncIfNeeded()
     state.logger.log("init", `Initialized with ${state.cache.size} entries`)
   }
 
@@ -207,10 +232,17 @@ export const createPluginRuntime = (
   }
 
   const syncIfNeeded = async (): Promise<boolean> => {
-    if (!state.syncManager) {
-      return false
+    let synced = false
+
+    if (state.syncManager) {
+      synced = await state.syncManager.syncIfNeeded() || synced
     }
-    return await state.syncManager.syncIfNeeded()
+
+    if (state.registerSyncManager) {
+      synced = await state.registerSyncManager.syncIfNeeded() || synced
+    }
+
+    return synced
   }
 
   return {

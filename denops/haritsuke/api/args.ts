@@ -19,6 +19,7 @@ export const assignConfigFromArgs = (config: HaritsukeConfig, args: unknown): vo
       max_entries: as.Optional(is.Number),
       max_data_size: as.Optional(is.Number),
       register_keys: as.Optional(is.String),
+      sync_registers: as.Optional(is.Boolean),
       debug: as.Optional(is.Boolean),
       use_region_hl: as.Optional(is.Boolean),
       region_hl_groupname: as.Optional(is.String),
@@ -31,7 +32,13 @@ export const assignConfigFromArgs = (config: HaritsukeConfig, args: unknown): vo
 }
 
 export const parseTextYankEvent = (args: unknown): TextYankEventPayload | null => {
-  const eventData = extractFirstArg(args)
+  const eventData = (() => {
+    const firstArg = extractFirstArg(args)
+    if (Array.isArray(firstArg) && firstArg.length === 1) {
+      return firstArg[0]
+    }
+    return firstArg
+  })()
   if (!eventData || typeof eventData !== "object") {
     return null
   }

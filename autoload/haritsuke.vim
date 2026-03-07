@@ -66,7 +66,7 @@ function! haritsuke#on_textyankpost() abort
     return
   endif
 
-  call haritsuke#notify('onTextYankPost', [copy(l:event)])
+  call haritsuke#notify('onTextYankPost', copy(l:event))
 endfunction
 
 function! haritsuke#request(funcname, ...) abort

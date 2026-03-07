@@ -34,6 +34,10 @@ export const handleTextYankPost = async (
     return
   }
 
+  if (state.registerSyncManager) {
+    await state.registerSyncManager.captureFromYank(event)
+  }
+
   // Check register changes immediately
   // Pass true to indicate this is from TextYankPost event
   const registerName = typeof event?.regname === "string" && event.regname.length === 1 ? event.regname : null
@@ -42,6 +46,27 @@ export const handleTextYankPost = async (
     fromTextYankPost: true,
     registerName,
   })
+}
+
+export const handleAutoSync = async (
+  denops: Denops,
+  state: PluginState,
+): Promise<void> => {
+  if (!state.registerSyncManager) {
+    return
+  }
+
+  if (
+    await skipIfApplyingHistory(denops, state.logger, {
+      category: "sync",
+      handlerName: "onAutoSync",
+    })
+  ) {
+    return
+  }
+
+  await state.syncManager?.syncIfNeeded()
+  await state.registerSyncManager.syncIfNeeded()
 }
 
 /**

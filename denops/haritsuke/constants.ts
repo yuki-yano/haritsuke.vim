@@ -69,6 +69,7 @@ export const CONFIG_DEFAULTS = {
   MAX_ENTRIES: 100,
   MAX_DATA_SIZE: 1048576, // 1MB
   REGISTER_KEYS: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+  SYNC_REGISTERS: false,
   DEBUG: false,
   USE_REGION_HL: true,
   REGION_HL_GROUPNAME: "HaritsukeRegion",

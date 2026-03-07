@@ -4,7 +4,7 @@
 
 import { assertEquals, describe, it, spy } from "../deps/test.ts"
 import type { Denops } from "../deps/denops.ts"
-import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
+import { handleAutoSync, handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
 import type { PluginState } from "../state/plugin-state.ts"
 import { createMockDenops, createMockLogger, createMockPluginState } from "./test-helpers.ts"
 
@@ -14,6 +14,7 @@ describe("event handlers", () => {
       const mockDenops = createMockDenops()
       const mockLogger = createMockLogger()
       const checkChangesSpy = spy((_denops: Denops, _context?: unknown) => Promise.resolve())
+      const captureFromYankSpy = spy((_event?: unknown) => Promise.resolve())
 
       const state = createMockPluginState({
         logger: mockLogger,
@@ -21,6 +22,11 @@ describe("event handlers", () => {
           checkChanges: checkChangesSpy,
           reset: () => {},
         } as unknown as PluginState["registerMonitor"],
+        registerSyncManager: {
+          captureFromYank: captureFromYankSpy,
+          syncIfNeeded: spy(() => Promise.resolve(false)),
+          reset: () => {},
+        } as unknown as PluginState["registerSyncManager"],
       })
 
       await handleTextYankPost(mockDenops, state, { regname: "a" })
@@ -32,6 +38,8 @@ describe("event handlers", () => {
         fromTextYankPost: true,
         registerName: "a",
       })
+      assertEquals(captureFromYankSpy.calls.length, 1)
+      assertEquals(captureFromYankSpy.calls[0]?.args[0], { regname: "a" })
 
       // Verify logging
       const logs = mockLogger.getLogs()
@@ -102,6 +110,63 @@ describe("event handlers", () => {
       // Verify helpers were not called
       assertEquals(stopRounderSpy.calls.length, 0)
       assertEquals(clearHighlightSpy.calls.length, 0)
+    })
+  })
+
+  describe("handleAutoSync", () => {
+    it("calls registerSyncManager when available", async () => {
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(0)
+          }
+          return Promise.resolve(0)
+        },
+      })
+
+      const syncIfNeededSpy = spy(() => Promise.resolve(true))
+      const state = createMockPluginState({
+        registerSyncManager: {
+          captureFromYank: spy(() => Promise.resolve()),
+          syncIfNeeded: syncIfNeededSpy,
+          reset: () => {},
+        } as unknown as PluginState["registerSyncManager"],
+      })
+
+      await handleAutoSync(mockDenops, state)
+
+      assertEquals(syncIfNeededSpy.calls.length, 1)
+    })
+
+    it("skips auto sync while applying history", async () => {
+      const mockDenops = createMockDenops({
+        eval: (expr: string) => {
+          if (expr === "get(g:, '_haritsuke_applying_history', 0)") {
+            return Promise.resolve(1)
+          }
+          return Promise.resolve(0)
+        },
+      })
+
+      const mockLogger = createMockLogger()
+      const syncIfNeededSpy = spy(() => Promise.resolve(true))
+      const state = createMockPluginState({
+        logger: mockLogger,
+        registerSyncManager: {
+          captureFromYank: spy(() => Promise.resolve()),
+          syncIfNeeded: syncIfNeededSpy,
+          reset: () => {},
+        } as unknown as PluginState["registerSyncManager"],
+      })
+
+      await handleAutoSync(mockDenops, state)
+
+      assertEquals(syncIfNeededSpy.calls.length, 0)
+      const logs = mockLogger.getLogs()
+      const skipLog = logs.find(
+        (log) => log.category === "sync" && log.message === "Skipping onAutoSync - applying history",
+      )
+      assertEquals(!!skipLog, true)
     })
   })
 

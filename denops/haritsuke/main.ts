@@ -12,6 +12,7 @@ export function main(denops: Denops): void {
     initialize: api.initialize,
     onTextYankPost: api.onTextYankPost,
     onCursorMoved: api.onCursorMoved,
+    onAutoSync: api.onAutoSync,
     onStopRounder: api.onStopRounder,
     preparePaste: api.preparePaste,
     onPasteExecuted: api.onPasteExecuted,

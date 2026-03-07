@@ -22,6 +22,9 @@ const createMockDatabase = (
     add: () => Promise.reject("Not implemented"),
     getRecent: getRecentSpy,
     getSyncStatus: getSyncStatusSpy,
+    upsertRegisterSnapshot: () => Promise.resolve(),
+    getRegisterSnapshots: () => [],
+    getDataVersion: () => 0,
     clear: () => Promise.resolve(),
     close: () => {},
   }

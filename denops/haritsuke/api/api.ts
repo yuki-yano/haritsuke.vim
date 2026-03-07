@@ -4,7 +4,7 @@
 
 import type { Denops } from "../deps/denops.ts"
 import type { PluginState } from "../state/plugin-state.ts"
-import { handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
+import { handleAutoSync, handleCursorMoved, handleStopRounder, handleTextYankPost } from "../events/event-handlers.ts"
 import { navigateNext, navigatePrev } from "../core/history-navigation.ts"
 import { withErrorHandling } from "../utils/error-handling.ts"
 import { getRounderRuntimeState } from "../state/plugin-state-context.ts"
@@ -33,6 +33,10 @@ export const createApi = (denops: Denops, state: PluginState) => {
       stopRounder: async (_denops, rounder, reason) => await runtime.stopRounder(rounder, reason),
       clearHighlight: async () => await runtime.clearHighlight(),
     })
+  }
+
+  const onAutoSync = async (_args: unknown): Promise<void> => {
+    await handleAutoSync(denops, state)
   }
 
   const cyclePrev = async (args: unknown): Promise<void> => {
@@ -86,6 +90,7 @@ export const createApi = (denops: Denops, state: PluginState) => {
     initialize: runtime.initialize,
     onTextYankPost,
     onCursorMoved,
+    onAutoSync,
     onStopRounder,
     preparePaste: pasteActions.preparePaste,
     onPasteExecuted: pasteActions.onPasteExecuted,

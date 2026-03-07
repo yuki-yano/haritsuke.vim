@@ -8,6 +8,7 @@ Advanced yank history manager with cycling support for Vim/Neovim powered by den
 - **Paste cycling**: After pasting, use `Ctrl-n`/`Ctrl-p` to cycle through yank history
 - **Replace operator**: Replace text with yanked content using operators (supports smart indentation)
 - **Multi-register support**: Track history for multiple registers
+- **Optional register auto-sync**: Sync yank-driven register updates across multiple Neovim instances via SQLite
 - **Smart highlighting**: Visual feedback during paste cycling
 - **Database-backed storage**: Efficient storage with SQLite
 - **Smart indentation**: Automatically adjusts indentation when pasting line-wise content
@@ -148,6 +149,7 @@ let g:haritsuke_config = {
   \ 'max_entries': 100,         " Maximum number of history entries
   \ 'max_data_size': 1048576,   " Maximum size per entry in bytes (1MB)
   \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+  \ 'sync_registers': v:false,  " Sync yank-driven registers across Neovim instances
   \ 'debug': v:false,           " Enable debug logging
   \ 'use_region_hl': v:true,    " Enable highlight during paste cycling
   \ 'region_hl_groupname': 'HaritsukeRegion',  " Highlight group name
@@ -164,6 +166,7 @@ vim.g.haritsuke_config = {
   max_entries = 100,         -- Maximum number of history entries
   max_data_size = 1048576,   -- Maximum size per entry in bytes (1MB)
   register_keys = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+  sync_registers = false,    -- Sync yank-driven registers across Neovim instances
   debug = false,             -- Enable debug logging
   use_region_hl = true,      -- Enable highlight during paste cycling
   region_hl_groupname = 'HaritsukeRegion',  -- Highlight group name
@@ -178,6 +181,7 @@ vim.g.haritsuke_config = {
 - **max_entries**: Maximum number of yank entries to keep in history (default: 100)
 - **max_data_size**: Maximum size in bytes for a single yank entry (default: 1048576 = 1MB)
 - **register_keys**: Registers to track for history (default: all alphanumeric and special registers)
+- **sync_registers**: When enabled, yank-driven register snapshots are synchronized across Neovim instances through the shared SQLite database. This currently targets writable yank-oriented registers (`"`, `0`, `a-z`, `A-Z`, `+`, `*`) derived from `register_keys`, and pulls updates on `FocusGained`, `CursorHold`, and before paste/history sync. Updates performed through `setreg()` or non-yank operators are not broadcast. (default: false)
 - **debug**: Enable debug logging for troubleshooting (default: false)
 - **use_region_hl**: Show visual highlight of pasted region during cycling (default: true)
 - **region_hl_groupname**: Vim highlight group for paste region highlighting (default: 'HaritsukeRegion')
@@ -234,6 +238,26 @@ haritsuke.vim tracks history for multiple registers independently:
 "ap     " Paste from register 'a' with history
 "bp     " Paste from register 'b' with history
 ```
+
+### Optional register auto-sync
+
+If you work with multiple Neovim instances and want yank-driven registers to follow each other, enable:
+
+```vim
+let g:haritsuke_config.sync_registers = v:true
+```
+
+```lua
+vim.g.haritsuke_config.sync_registers = true
+```
+
+Notes:
+
+- Sync is opt-in and disabled by default.
+- Only yank-triggered register updates are propagated.
+- Current implementation synchronizes writable yank-oriented registers (`"`, `0`, `a-z`, `A-Z`, `+`, `*`) when they are included by `register_keys`.
+- Updates are pulled automatically on `FocusGained`, `CursorHold`, `CursorHoldI`, and before normal haritsuke history synchronization.
+- Direct `setreg()` calls and delete/change operators are not broadcast to other instances.
 
 ### Visual mode support
 

@@ -21,6 +21,7 @@ export type HaritsukeConfig = {
   max_entries: number
   max_data_size: number
   register_keys: string
+  sync_registers?: boolean
   debug: boolean
   use_region_hl?: boolean
   region_hl_groupname?: string

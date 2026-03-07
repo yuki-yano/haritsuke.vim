@@ -432,4 +432,54 @@ describe("YankDatabase", () => {
       assertExists(retrieveTime < 100) // Retrieving should take less than 100ms
     })
   })
+
+  describe("register snapshots", () => {
+    it("upserts and returns register snapshots", async () => {
+      await db.upsertRegisterSnapshot({
+        register: '"',
+        regcontents: ["first"],
+        regtype: "v",
+        sourceInstanceId: "instance-1",
+        updatedAt: 1000,
+      })
+
+      await db.upsertRegisterSnapshot({
+        register: '"',
+        regcontents: ["second"],
+        regtype: "V",
+        sourceInstanceId: "instance-2",
+        updatedAt: 2000,
+      })
+
+      const snapshots = db.getRegisterSnapshots()
+      assertEquals(snapshots.length, 1)
+      assertEquals(snapshots[0].register, '"')
+      assertEquals(snapshots[0].regcontents, ["second"])
+      assertEquals(snapshots[0].regtype, "V")
+      assertEquals(snapshots[0].sourceInstanceId, "instance-2")
+      assertEquals(snapshots[0].updatedAt, 2000)
+    })
+
+    it("updates data_version for other database connections", async () => {
+      const peerDb = createYankDatabase(tempDir, { maxHistory: 100 })
+      await peerDb.init()
+
+      try {
+        const before = peerDb.getDataVersion()
+
+        await db.upsertRegisterSnapshot({
+          register: "a",
+          regcontents: ["remote"],
+          regtype: "v",
+          sourceInstanceId: "instance-1",
+          updatedAt: 1000,
+        })
+
+        const after = peerDb.getDataVersion()
+        assertEquals(after > before, true)
+      } finally {
+        peerDb.close()
+      }
+    })
+  })
 })

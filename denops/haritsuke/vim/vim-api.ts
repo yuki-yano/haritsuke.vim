@@ -9,6 +9,12 @@ import { fn, helpers, vars } from "../deps/denops.ts"
 /**
  * Vim API interface for dependency injection
  */
+export type RegisterInfo = {
+  regcontents: string[]
+  regtype: string
+  isunnamed?: boolean
+}
+
 export type VimApi = {
   // Buffer operations
   bufnr: (buf: string) => Promise<number>
@@ -17,6 +23,8 @@ export type VimApi = {
   getreg: (register: string) => Promise<string | string[]>
   setreg: (register: string, content: string, regtype: string) => Promise<void>
   getregtype: (register: string) => Promise<string>
+  getreginfo: (register: string) => Promise<RegisterInfo>
+  setreginfo: (register: string, info: RegisterInfo) => Promise<void>
 
   // Position operations
   getpos: (expr: string) => Promise<number[]>
@@ -71,6 +79,17 @@ export const createVimApi = (denops: Denops): VimApi => {
 
     getregtype: async (register: string) => {
       return await fn.getregtype(denops, register)
+    },
+
+    getreginfo: async (register: string) => {
+      return await denops.call("getreginfo", register) as RegisterInfo
+    },
+
+    setreginfo: async (register: string, info: RegisterInfo) => {
+      await denops.call("setreg", register, {
+        regcontents: info.regcontents,
+        regtype: info.regtype,
+      })
     },
 
     getpos: async (expr: string) => {
@@ -143,6 +162,8 @@ export const createMockVimApi = (overrides: Partial<VimApi> = {}): VimApi => {
     getreg: () => Promise.resolve(""),
     setreg: () => Promise.resolve(),
     getregtype: () => Promise.resolve("v"),
+    getreginfo: () => Promise.resolve({ regcontents: [], regtype: "v", isunnamed: false }),
+    setreginfo: () => Promise.resolve(),
     getpos: () => Promise.resolve([0, 1, 1, 0]),
     line: () => Promise.resolve(1),
     getline: () => Promise.resolve(""),

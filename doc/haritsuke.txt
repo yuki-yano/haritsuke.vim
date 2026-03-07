@@ -25,6 +25,7 @@ Features:
   - Paste cycling with Ctrl-n/Ctrl-p after pasting
   - Replace operator for motion-based replacement
   - Multi-register support
+  - Optional register auto-sync across Neovim instances
   - Smart highlighting during paste cycling
   - Database-backed storage with SQLite
 
@@ -216,6 +217,7 @@ Configure haritsuke.vim by setting `g:haritsuke_config` dictionary:
       \ 'max_entries': 100,
       \ 'max_data_size': 1048576,
       \ 'register_keys': 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_',
+      \ 'sync_registers': v:false,
       \ 'debug': v:false,
       \ 'use_region_hl': v:true,
       \ 'region_hl_groupname': 'HaritsukeRegion',
@@ -241,6 +243,16 @@ max_data_size                           *g:haritsuke_config.max_data_size*
 register_keys                           *g:haritsuke_config.register_keys*
     Registers to track for history.
     Default: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"-=.:%/#*+~_'
+
+sync_registers                          *g:haritsuke_config.sync_registers*
+    When enabled, synchronize yank-driven register snapshots across Neovim
+    instances through the shared SQLite database.
+    Auto-sync currently targets writable yank-oriented registers ('"', '0',
+    'a-z', 'A-Z', '+', '*') when they are included by |g:haritsuke_config.register_keys|.
+    Updates are pulled on FocusGained, CursorHold, CursorHoldI, and before
+    haritsuke history synchronization.
+    Direct |setreg()| calls and non-yank operators are not broadcast.
+    Default: v:false
 
 debug                                   *g:haritsuke_config.debug*
     Enable debug logging for troubleshooting.

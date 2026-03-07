@@ -8,6 +8,7 @@ import type { YankCache } from "../data/cache.ts"
 import type { RounderManager } from "../core/rounder.ts"
 import type { DebugLogger } from "../utils/debug-logger.ts"
 import type { HighlightManager } from "../vim/highlight.ts"
+import type { RegisterSyncManager } from "../data/register-sync-manager.ts"
 import type { SyncManager } from "../data/sync-manager.ts"
 import type { RegisterMonitor } from "../events/register-monitor.ts"
 import type { PasteHandler } from "../core/paste-handler.ts"
@@ -22,6 +23,7 @@ export type PluginState = {
   logger: DebugLogger | null
   highlightManager: HighlightManager | null
   syncManager: SyncManager | null
+  registerSyncManager: RegisterSyncManager | null
   registerMonitor: RegisterMonitor | null
   pasteHandler: PasteHandler | null
   config: HaritsukeConfig
@@ -42,6 +44,7 @@ export const createPluginState = (): PluginState => {
     logger: null,
     highlightManager: null,
     syncManager: null,
+    registerSyncManager: null,
     registerMonitor: null,
     pasteHandler: null,
     config: {
@@ -49,6 +52,7 @@ export const createPluginState = (): PluginState => {
       max_entries: CONFIG_DEFAULTS.MAX_ENTRIES,
       max_data_size: CONFIG_DEFAULTS.MAX_DATA_SIZE,
       register_keys: CONFIG_DEFAULTS.REGISTER_KEYS,
+      sync_registers: CONFIG_DEFAULTS.SYNC_REGISTERS,
       debug: CONFIG_DEFAULTS.DEBUG,
       use_region_hl: CONFIG_DEFAULTS.USE_REGION_HL,
       region_hl_groupname: CONFIG_DEFAULTS.REGION_HL_GROUPNAME,
@@ -75,6 +79,7 @@ export const createPluginState = (): PluginState => {
       state.logger = null
       state.highlightManager = null
       state.syncManager = null
+      state.registerSyncManager = null
       state.registerMonitor = null
       state.pasteHandler = null
       state.vimApi = null
